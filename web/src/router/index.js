@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import tradeRouter from './trade'
 
 const routes = [
   {
@@ -15,6 +16,7 @@ const routes = [
     name: 'Login',
     component: () => import('@/view/login/index.vue')
   },
+  tradeRouter,
   {
     path: '/scanUpload',
     name: 'ScanUpload',
