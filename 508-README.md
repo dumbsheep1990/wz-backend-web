@@ -7,6 +7,7 @@
 完成了 `src/api/trade.js` 文件的开发，提供了完整的交易相关API接口，包括：
 
 #### 订单管理
+
 - `getUserOrders`: 获取当前用户的订单列表
 - `getOrderDetail`: 获取订单详情
 - `createOrder`: 创建订单
@@ -14,19 +15,23 @@
 - `payOrder`: 支付订单
 
 #### 退款管理
+
 - `applyRefund`: 申请退款
 - `getUserRefunds`: 获取当前用户的退款列表
 - `getRefundDetail`: 获取退款详情
 - `cancelRefund`: 取消退款申请
 
 #### 交易记录
+
 - `getUserTransactions`: 获取当前用户的交易记录
 
 #### 支付方式
+
 - `getPaymentMethods`: 获取可用的支付方式列表
 - `getPaymentStatus`: 获取支付状态
 
 #### 钱包功能
+
 - `getWalletBalance`: 获取用户钱包余额
 - `rechargeWallet`: 钱包充值
 - `withdrawWallet`: 钱包提现
@@ -45,6 +50,7 @@
 ### 3. 路由配置
 
 完成了交易相关路由的配置：
+
 - 创建并配置了 `trade.js` 路由文件
 - 将交易路由集成到主路由中
 
@@ -80,4 +86,3 @@ wz-backend-web/
         └── api/
             └── trade.spec.js     # 交易API单元测试
 ```
-

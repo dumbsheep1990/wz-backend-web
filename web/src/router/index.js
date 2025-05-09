@@ -1,5 +1,9 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import tradeRouter from './trade'
+import adRouter from './ad'
+import recommendRouter from './recommend'
+import navigationRouter from './navigation'
+import contentRouter from './content'
 
 const routes = [
   {
@@ -17,6 +21,10 @@ const routes = [
     component: () => import('@/view/login/index.vue')
   },
   tradeRouter,
+  adRouter,
+  recommendRouter,
+  navigationRouter,
+  contentRouter,
   {
     path: '/scanUpload',
     name: 'ScanUpload',
