@@ -4,6 +4,10 @@ import adRouter from './ad'
 import recommendRouter from './recommend'
 import navigationRouter from './navigation'
 import contentRouter from './content'
+import linksRouter from './links'
+import siteConfigRouter from './site_config'
+import statisticsRouter from './statistics'
+import userRouter from './user'
 
 const routes = [
   {
@@ -25,6 +29,10 @@ const routes = [
   recommendRouter,
   navigationRouter,
   contentRouter,
+  linksRouter,
+  siteConfigRouter,
+  statisticsRouter,
+  userRouter,
   {
     path: '/scanUpload',
     name: 'ScanUpload',
