@@ -29,9 +29,9 @@ export function listPointsByUser(params) {
 }
 
 // 获取用户总积分
-export function getUserTotalPoints(userId) {
+export function getUserTotalPoints() {
   return request({
-    url: `/api/v1/points/users/${userId}/total`,
+    url: '/api/v1/points/total',
     method: 'get'
   })
 } 

@@ -2,7 +2,7 @@
 const userRoutes = [
   {
     path: '/user',
-    component: () => import('@/views/layout/index'),
+    component: () => import('@/view/layout/index'),
     redirect: '/user/message',
     alwaysShow: true,
     name: 'UserCenter',
@@ -10,21 +10,21 @@ const userRoutes = [
     children: [
       {
         path: 'message',
-        component: () => import('@/views/user/message/index'),
+        component: () => import('@/view/user/message/index'),
         name: 'UserMessage',
         meta: { title: '消息管理', icon: 'message' }
       },
       {
         path: 'points',
-        component: () => import('@/views/user/points/index'),
+        component: () => import('@/view/user/points/index'),
         name: 'UserPoints',
         meta: { title: '积分管理', icon: 'star' }
       },
       {
         path: 'favorites',
-        component: () => import('@/views/user/favorites/index'),
+        component: () => import('@/view/user/favorites/index'),
         name: 'UserFavorites',
-        meta: { title: '收藏管理', icon: 'star' }
+        meta: { title: '收藏管理', icon: 'bookmark' }
       }
     ]
   }
