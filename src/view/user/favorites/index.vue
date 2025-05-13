@@ -46,6 +46,12 @@
         </el-form>
       </div>
       
+      <!-- 批量操作工具栏 -->
+      <div class="batch-actions" v-if="hasMultipleSelection">
+        <el-button type="danger" size="small" @click="handleBatchDelete">批量删除</el-button>
+        <span class="selected-count">已选择 {{ selectedRows.length }} 条记录</span>
+      </div>
+      
       <div v-if="!tableData.length && !loading" class="empty-favorites">
         <el-empty description="暂无收藏记录" :image-size="120"></el-empty>
       </div>
@@ -56,7 +62,9 @@
         style="width: 100%"
         v-loading="loading"
         border
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="55" align="center"></el-table-column>
         <el-table-column prop="id" label="收藏ID" min-width="80" align="center"></el-table-column>
         <el-table-column prop="user_id" label="用户ID" min-width="80" align="center"></el-table-column>
         <el-table-column prop="username" label="用户名" min-width="120"></el-table-column>
@@ -215,9 +223,14 @@ import {
   exportFavoritesData,
   getFavoritesStatistics,
   getHotContent,
-  getFavoritesTrend
+  getFavoritesTrend,
+  batchDeleteFavorites
 } from '@/api/admin/favorites'
 import { formatTimeToStr } from '@/utils/date'
+import { mapGetters } from 'vuex'
+import { checkPermission } from '@/utils/permission'
+import { debounce } from 'lodash'
+import { logOperation } from '@/utils/logger'
 import * as echarts from 'echarts'
 
 export default {
@@ -271,51 +284,100 @@ export default {
             picker.$emit('pick', [start, end])
           }
         }]
-      }
+      },
+      permissions: {
+        view: 'favorites:view',
+        delete: 'favorites:delete',
+        export: 'favorites:export',
+        stats: 'favorites:stats'
+      },
+      userPreferences: {
+        pageSize: 10,
+        defaultActiveTab: 'typeDistribution'
+      },
+      searchHistory: [],
+      selectedRows: [],
+      isMobile: false,
+      chartInstance: null
+    }
+  },
+  computed: {
+    ...mapGetters(['userInfo', 'roles']),
+    hasDeletePermission() {
+      return checkPermission(this.permissions.delete, this.roles)
+    },
+    hasExportPermission() {
+      return checkPermission(this.permissions.export, this.roles)
+    },
+    hasStatPermission() {
+      return checkPermission(this.permissions.stats, this.roles)
+    },
+    hasMultipleSelection() {
+      return this.selectedRows.length > 0
     }
   },
   created() {
+    this.loadUserPreferences()
+    this.checkMobile()
     this.getFavoritesList()
+    window.addEventListener('resize', debounce(this.handleResize, 200))
+  },
+  beforeDestroy() {
+    this.saveUserPreferences()
+    window.removeEventListener('resize', this.handleResize)
+    this.destroyChart()
   },
   methods: {
-    // 获取收藏列表
-    getFavoritesList() {
+    async getFavoritesList() {
       this.loading = true
-      const params = {
-        page: this.page,
-        pageSize: this.pageSize,
-        ...this.searchForm
-      }
-      
-      if (this.dateRange && this.dateRange.length === 2) {
-        params.start_date = this.dateRange[0]
-        params.end_date = this.dateRange[1]
-      }
-      
-      listFavorites(params)
-        .then(res => {
-          this.loading = false
-          if (res.code === 0) {
-            this.tableData = res.data.list
-            this.total = res.data.total
-          } else {
-            this.$message.error(res.message || '获取收藏列表失败')
+      try {
+        const params = {
+          page: this.page,
+          pageSize: this.pageSize,
+          ...this.searchForm
+        }
+        
+        if (this.dateRange && this.dateRange.length === 2) {
+          params.start_date = this.dateRange[0]
+          params.end_date = this.dateRange[1]
+        }
+        
+        const res = await listFavorites(params)
+        if (res.code === 0) {
+          this.tableData = res.data.list
+          this.total = res.data.total
+          
+          if (this.tableData.length === 0 && this.total > 0 && this.page > 1) {
+            this.page = 1
+            this.getFavoritesList()
           }
-        })
-        .catch(err => {
-          this.loading = false
-          console.error(err)
-          this.$message.error('获取收藏列表失败')
-        })
+        } else {
+          this.$message.error(res.message || '获取收藏列表失败')
+        }
+      } catch (error) {
+        console.error('获取收藏列表出错:', error)
+        this.$message.error('获取收藏列表出错')
+      } finally {
+        this.loading = false
+      }
     },
-    
-    // 处理查询
     handleSearch() {
       this.page = 1
       this.getFavoritesList()
+      
+      const searchItem = {
+        ...this.searchForm,
+        dateRange: [...this.dateRange],
+        timestamp: new Date().getTime()
+      }
+      
+      this.searchHistory.unshift(searchItem)
+      if (this.searchHistory.length > 10) {
+        this.searchHistory.pop()
+      }
+      
+      localStorage.setItem('favorites_search_history', JSON.stringify(this.searchHistory))
     },
-    
-    // 重置查询
     resetSearch() {
       this.searchForm = {
         user_id: '',
@@ -327,66 +389,99 @@ export default {
       this.page = 1
       this.getFavoritesList()
     },
-    
-    // 处理每页数量变化
-    handleSizeChange(val) {
-      this.pageSize = val
-      this.getFavoritesList()
-    },
-    
-    // 处理页码变化
-    handleCurrentChange(val) {
-      this.page = val
-      this.getFavoritesList()
-    },
-    
-    // 查看收藏详情
-    viewDetail(row) {
-      getFavoriteDetail(row.id)
-        .then(res => {
-          if (res.code === 0) {
-            this.currentDetail = res.data
-            this.detailDialogVisible = true
-          } else {
-            this.$message.error(res.message || '获取收藏详情失败')
-          }
-        })
-        .catch(err => {
-          console.error(err)
-          this.$message.error('获取收藏详情失败')
-        })
-    },
-    
-    // 删除收藏记录
-    handleDelete(row) {
-      this.$confirm('确定要删除该收藏记录吗？此操作将永久删除该记录。', '警告', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        deleteFavorite(row.id)
-          .then(res => {
-            if (res.code === 0) {
-              this.$message.success('删除成功')
-              this.getFavoritesList() // 刷新列表
-            } else {
-              this.$message.error(res.message || '删除失败')
-            }
+    async viewDetail(row) {
+      if (!checkPermission(this.permissions.view, this.roles)) {
+        this.$message.warning('您没有查看详情的权限')
+        return
+      }
+      
+      try {
+        this.loading = true
+        const res = await getFavoriteDetail(row.id)
+        if (res.code === 0) {
+          this.currentDetail = res.data
+          this.detailDialogVisible = true
+          
+          logOperation({
+            module: '收藏管理',
+            operationType: '查看详情',
+            target: `收藏ID: ${row.id}, 用户ID: ${row.user_id}`,
+            operator: this.userInfo.username,
+            result: '成功'
           })
-          .catch(err => {
-            console.error(err)
-            this.$message.error('删除失败')
-          })
-      }).catch(() => {})
+        } else {
+          this.$message.error(res.message || '获取详情失败')
+        }
+      } catch (error) {
+        console.error('获取详情出错:', error)
+        this.$message.error('获取详情出错')
+      } finally {
+        this.loading = false
+      }
     },
-    
-    // 导出数据
-    handleExport() {
-      this.$confirm('确定要导出当前查询条件下的收藏记录吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'info'
-      }).then(() => {
+    openContent() {
+      if (!this.currentDetail || !this.currentDetail.url) return
+      
+      window.open(this.currentDetail.url, '_blank')
+    },
+    async handleDelete(row) {
+      if (!this.hasDeletePermission) {
+        this.$message.warning('您没有删除权限')
+        return
+      }
+      
+      try {
+        await this.$confirm('确定要删除这条收藏记录吗？此操作不可恢复', '警告', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        
+        this.loading = true
+        const res = await deleteFavorite(row.id)
+        
+        if (res.code === 0) {
+          this.$message.success('删除成功')
+          this.getFavoritesList()
+          
+          logOperation({
+            module: '收藏管理',
+            operationType: '删除收藏',
+            target: `收藏ID: ${row.id}, 用户ID: ${row.user_id}`,
+            operator: this.userInfo.username,
+            result: '成功'
+          })
+        } else {
+          this.$message.error(res.message || '删除失败')
+          
+          logOperation({
+            module: '收藏管理',
+            operationType: '删除收藏',
+            target: `收藏ID: ${row.id}, 用户ID: ${row.user_id}`,
+            operator: this.userInfo.username,
+            result: '失败',
+            errorMsg: res.message
+          })
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('删除收藏出错:', error)
+          this.$message.error('删除收藏出错')
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+    async handleExport() {
+      if (!this.hasExportPermission) {
+        this.$message.warning('您没有导出权限')
+        return
+      }
+      
+      try {
+        this.loading = true
+        this.$message.info('正在导出数据，请稍候...')
+        
         const params = { ...this.searchForm }
         
         if (this.dateRange && this.dateRange.length === 2) {
@@ -394,81 +489,155 @@ export default {
           params.end_date = this.dateRange[1]
         }
         
-        exportFavoritesData(params)
-          .then(res => {
-            // 处理文件下载
-            const blob = new Blob([res.data], { type: 'application/vnd.ms-excel' })
-            const link = document.createElement('a')
-            link.href = URL.createObjectURL(blob)
-            link.download = '收藏记录导出_' + new Date().getTime() + '.xlsx'
-            link.click()
-            URL.revokeObjectURL(link.href)
-            this.$message.success('导出成功')
-          })
-          .catch(err => {
-            console.error(err)
-            this.$message.error('导出失败')
-          })
-      }).catch(() => {})
-    },
-    
-    // 打开内容链接
-    openContent() {
-      if (this.currentDetail && this.currentDetail.url) {
-        window.open(this.currentDetail.url, '_blank')
+        const res = await exportFavoritesData(params)
+        
+        const blob = new Blob([res], { type: 'application/vnd.ms-excel' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `收藏记录_${new Date().getTime()}.xlsx`
+        link.click()
+        URL.revokeObjectURL(link.href)
+        
+        this.$message.success('导出成功')
+        
+        logOperation({
+          module: '收藏管理',
+          operationType: '导出数据',
+          target: `收藏记录`,
+          operator: this.userInfo.username,
+          result: '成功'
+        })
+      } catch (error) {
+        console.error('导出数据出错:', error)
+        this.$message.error('导出数据出错')
+        
+        logOperation({
+          module: '收藏管理',
+          operationType: '导出数据',
+          target: `收藏记录`,
+          operator: this.userInfo.username,
+          result: '失败',
+          errorMsg: error.message
+        })
+      } finally {
+        this.loading = false
       }
     },
-    
-    // 显示统计信息
-    showStatistics() {
+    async showStatistics() {
+      if (!this.hasStatPermission) {
+        this.$message.warning('您没有查看统计数据的权限')
+        return
+      }
+      
       this.statsDialogVisible = true
-      this.activeTab = 'typeDistribution'
+      this.activeTab = this.userPreferences.defaultActiveTab || 'typeDistribution'
+      
+      await this.loadStatisticsData()
+      
       this.$nextTick(() => {
-        this.loadTypeDistribution()
-        this.loadHotContent()
-        this.loadTrendData()
+        this.renderChart()
+      })
+      
+      logOperation({
+        module: '收藏管理',
+        operationType: '查看统计数据',
+        target: '收藏统计分析',
+        operator: this.userInfo.username,
+        result: '成功'
       })
     },
-    
-    // 加载类型分布数据
-    loadTypeDistribution() {
-      getFavoritesStatistics()
-        .then(res => {
+    async loadStatisticsData() {
+      try {
+        this.loading = true
+        
+        if (this.activeTab === 'typeDistribution') {
+          const res = await getFavoritesStatistics()
           if (res.code === 0) {
-            this.initTypeChart(res.data.type_distribution)
-          } else {
-            this.$message.error(res.message || '获取统计数据失败')
+            this.typeDistributionData = res.data.typeDistribution || []
           }
-        })
-        .catch(err => {
-          console.error(err)
-          this.$message.error('获取统计数据失败')
-        })
+        }
+        
+        if (this.activeTab === 'hotContent') {
+          const res = await getHotContent()
+          if (res.code === 0) {
+            this.hotContentData = res.data || []
+          }
+        }
+        
+        if (this.activeTab === 'trend') {
+          await this.loadTrendData()
+        }
+      } catch (error) {
+        console.error('加载统计数据出错:', error)
+        this.$message.error('加载统计数据出错')
+      } finally {
+        this.loading = false
+      }
     },
-    
-    // 初始化类型分布图表
-    initTypeChart(data) {
-      if (!data || data.length === 0) return
+    async loadTrendData() {
+      try {
+        const res = await getFavoritesTrend(this.trendPeriod)
+        if (res.code === 0) {
+          this.trendData = res.data || []
+          
+          if (this.activeTab === 'trend') {
+            this.$nextTick(() => {
+              this.renderTrendChart()
+            })
+          }
+        }
+      } catch (error) {
+        console.error('加载趋势数据出错:', error)
+        this.$message.error('加载趋势数据出错')
+      }
+    },
+    async handleTabChange(tab) {
+      this.activeTab = tab
+      
+      this.userPreferences.defaultActiveTab = tab
+      
+      await this.loadStatisticsData()
+      
+      this.$nextTick(() => {
+        this.renderChart()
+      })
+    },
+    renderChart() {
+      if (this.activeTab === 'typeDistribution') {
+        this.renderTypeChart()
+      } else if (this.activeTab === 'trend') {
+        this.renderTrendChart()
+      }
+    },
+    renderTypeChart() {
+      this.destroyChart()
+      
+      if (!this.typeDistributionData.length) return
       
       const chartDom = document.getElementById('typeChart')
       if (!chartDom) return
       
-      this.typeChart = echarts.init(chartDom)
+      this.chartInstance = echarts.init(chartDom)
+      
       const option = {
+        title: {
+          text: '收藏类型分布',
+          left: 'center'
+        },
         tooltip: {
           trigger: 'item',
           formatter: '{a} <br/>{b}: {c} ({d}%)'
         },
         legend: {
           orient: 'vertical',
-          left: 10,
-          data: data.map(item => this.formatItemType(item.type))
+          left: 'left',
+          data: this.typeDistributionData.map(item => this.formatItemType(item.type))
         },
         series: [
           {
             name: '收藏类型',
             type: 'pie',
-            radius: ['50%', '70%'],
+            radius: ['40%', '70%'],
             avoidLabelOverlap: false,
             label: {
               show: false,
@@ -484,7 +653,7 @@ export default {
             labelLine: {
               show: false
             },
-            data: data.map(item => ({
+            data: this.typeDistributionData.map(item => ({
               value: item.count,
               name: this.formatItemType(item.type)
             }))
@@ -492,51 +661,26 @@ export default {
         ]
       }
       
-      this.typeChart.setOption(option)
+      this.chartInstance.setOption(option)
     },
-    
-    // 加载热门内容数据
-    loadHotContent() {
-      getHotContent()
-        .then(res => {
-          if (res.code === 0) {
-            this.hotContentData = res.data
-          } else {
-            this.$message.error(res.message || '获取热门内容失败')
-          }
-        })
-        .catch(err => {
-          console.error(err)
-          this.$message.error('获取热门内容失败')
-        })
-    },
-    
-    // 加载趋势数据
-    loadTrendData() {
-      getFavoritesTrend(this.trendPeriod)
-        .then(res => {
-          if (res.code === 0) {
-            this.trendData = res.data
-            this.initTrendChart()
-          } else {
-            this.$message.error(res.message || '获取趋势数据失败')
-          }
-        })
-        .catch(err => {
-          console.error(err)
-          this.$message.error('获取趋势数据失败')
-        })
-    },
-    
-    // 初始化趋势图表
-    initTrendChart() {
-      if (!this.trendData || this.trendData.length === 0) return
+    renderTrendChart() {
+      this.destroyChart()
+      
+      if (!this.trendData.length) return
       
       const chartDom = document.getElementById('trendChart')
       if (!chartDom) return
       
-      this.trendChart = echarts.init(chartDom)
+      this.chartInstance = echarts.init(chartDom)
+      
+      const dates = this.trendData.map(item => item.time_unit)
+      const counts = this.trendData.map(item => item.count)
+      
       const option = {
+        title: {
+          text: '收藏趋势分析',
+          left: 'center'
+        },
         tooltip: {
           trigger: 'axis',
           axisPointer: {
@@ -549,70 +693,150 @@ export default {
           bottom: '3%',
           containLabel: true
         },
-        xAxis: [
-          {
-            type: 'category',
-            data: this.trendData.map(item => item.date),
-            axisTick: {
-              alignWithLabel: true
-            }
+        xAxis: {
+          type: 'category',
+          data: dates,
+          axisTick: {
+            alignWithLabel: true
           }
-        ],
-        yAxis: [
-          {
-            type: 'value'
-          }
-        ],
+        },
+        yAxis: {
+          type: 'value'
+        },
         series: [
           {
             name: '收藏数量',
             type: 'bar',
             barWidth: '60%',
-            data: this.trendData.map(item => item.count)
+            data: counts
           }
         ]
       }
       
-      this.trendChart.setOption(option)
+      this.chartInstance.setOption(option)
     },
-    
-    // 格式化日期
-    formatDate(time) {
-      if (time) {
-        return formatTimeToStr(time, 'yyyy-MM-dd HH:mm')
+    destroyChart() {
+      if (this.chartInstance) {
+        this.chartInstance.dispose()
+        this.chartInstance = null
       }
-      return ''
     },
-    
-    // 格式化收藏类型
+    handleResize() {
+      this.checkMobile()
+      
+      if (this.chartInstance && this.statsDialogVisible) {
+        this.chartInstance.resize()
+      }
+    },
+    handleSelectionChange(rows) {
+      this.selectedRows = rows
+    },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.userPreferences.pageSize = val
+      this.getFavoritesList()
+    },
+    handleCurrentChange(val) {
+      this.page = val
+      this.getFavoritesList()
+    },
+    formatDate(timestamp) {
+      return formatTimeToStr(timestamp, 'yyyy-MM-dd hh:mm:ss')
+    },
     formatItemType(type) {
       const typeMap = {
         'article': '文章',
         'product': '商品',
-        'video': '视频'
+        'video': '视频',
+        'course': '课程',
+        'audio': '音频'
       }
       return typeMap[type] || type
     },
-    
-    // 获取标签类型
     getTagType(type) {
       const typeMap = {
-        'article': '',
-        'product': 'success',
-        'video': 'warning'
+        'article': 'success',
+        'product': 'primary',
+        'video': 'warning',
+        'course': 'info',
+        'audio': 'danger'
       }
       return typeMap[type] || 'info'
-    }
-  },
-  beforeDestroy() {
-    // 销毁图表实例，避免内存泄漏
-    if (this.typeChart) {
-      this.typeChart.dispose()
-      this.typeChart = null
-    }
-    if (this.trendChart) {
-      this.trendChart.dispose()
-      this.trendChart = null
+    },
+    loadUserPreferences() {
+      try {
+        const savedPrefs = localStorage.getItem('favorites_preferences')
+        if (savedPrefs) {
+          const prefs = JSON.parse(savedPrefs)
+          this.userPreferences = { ...this.userPreferences, ...prefs }
+          this.pageSize = prefs.pageSize || 10
+        }
+        
+        const searchHistory = localStorage.getItem('favorites_search_history')
+        if (searchHistory) {
+          this.searchHistory = JSON.parse(searchHistory)
+        }
+      } catch (error) {
+        console.error('加载用户偏好设置出错:', error)
+      }
+    },
+    saveUserPreferences() {
+      try {
+        localStorage.setItem('favorites_preferences', JSON.stringify(this.userPreferences))
+      } catch (error) {
+        console.error('保存用户偏好设置出错:', error)
+      }
+    },
+    checkMobile() {
+      this.isMobile = window.innerWidth < 768
+    },
+    async handleBatchDelete() {
+      if (!this.hasDeletePermission) {
+        this.$message.warning('您没有批量删除权限')
+        return
+      }
+      
+      try {
+        await this.$confirm('确定要批量删除这些收藏记录吗？此操作不可恢复', '警告', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        
+        this.loading = true
+        const res = await batchDeleteFavorites(this.selectedRows.map(row => row.id))
+        
+        if (res.code === 0) {
+          this.$message.success('批量删除成功')
+          this.getFavoritesList()
+          
+          logOperation({
+            module: '收藏管理',
+            operationType: '批量删除收藏',
+            target: `收藏ID: ${this.selectedRows.map(row => row.id).join(', ')}, 用户ID: ${this.selectedRows.map(row => row.user_id).join(', ')}`,
+            operator: this.userInfo.username,
+            result: '成功'
+          })
+        } else {
+          this.$message.error(res.message || '批量删除失败')
+          
+          logOperation({
+            module: '收藏管理',
+            operationType: '批量删除收藏',
+            target: `收藏ID: ${this.selectedRows.map(row => row.id).join(', ')}, 用户ID: ${this.selectedRows.map(row => row.user_id).join(', ')}`,
+            operator: this.userInfo.username,
+            result: '失败',
+            errorMsg: res.message
+          })
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('批量删除收藏出错:', error)
+          this.$message.error('批量删除收藏出错')
+        }
+      } finally {
+        this.loading = false
+      }
     }
   }
 }
@@ -648,11 +872,11 @@ export default {
       align-items: center;
       
       .item-cover {
-        width: 50px;
-        height: 50px;
+        width: 60px;
+        height: 60px;
         margin-right: 10px;
         overflow: hidden;
-        border-radius: 4px;
+        border-radius: 3px;
         
         img {
           width: 100%;
@@ -668,16 +892,17 @@ export default {
         .item-title {
           font-weight: bold;
           margin-bottom: 5px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         
         .item-summary {
-          color: #999;
+          color: #606266;
           font-size: 12px;
           overflow: hidden;
           text-overflow: ellipsis;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
+          white-space: nowrap;
         }
       }
     }
@@ -694,13 +919,15 @@ export default {
   
   .favorite-detail {
     .content-preview {
+      width: 100%;
+      margin-bottom: 15px;
       text-align: center;
-      margin-bottom: 20px;
       
       img {
         max-width: 100%;
         max-height: 200px;
-        border-radius: 4px;
+        object-fit: contain;
+        border-radius: 5px;
       }
     }
     
@@ -719,26 +946,62 @@ export default {
       .value {
         color: #303133;
         
-        &.link {
+        &.link a {
           color: #409EFF;
-          cursor: pointer;
-          
-          &:hover {
-            text-decoration: underline;
-          }
         }
       }
     }
   }
   
   .chart-container {
-    width: 100%;
-    height: 350px;
+    height: 400px;
+    margin: 20px 0;
   }
   
   .date-selector {
     margin-bottom: 20px;
     text-align: center;
+  }
+  
+  .batch-actions {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    
+    .selected-count {
+      margin-left: 10px;
+      color: #606266;
+      font-size: 13px;
+    }
+  }
+  
+  @media screen and (max-width: 768px) {
+    .favorites-header {
+      flex-direction: column;
+      align-items: flex-start;
+      
+      .action-buttons {
+        margin-top: 10px;
+        align-self: flex-end;
+      }
+    }
+    
+    .filter-container {
+      .el-form-item {
+        width: 100%;
+      }
+    }
+    
+    .favorite-item {
+      .item-cover {
+        width: 40px;
+        height: 40px;
+      }
+    }
+    
+    .chart-container {
+      height: 300px;
+    }
   }
 }
 </style> 

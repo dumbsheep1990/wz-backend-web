@@ -196,8 +196,12 @@
 </template>
 
 <script>
-import { listPoints, getUserPoints, addPoints, deletePoints, exportPointsData } from '@/api/admin/points'
+import { listPoints, getUserPoints, addPoints, deletePoints, exportPointsData, getPointsStatistics } from '@/api/admin/points'
 import { formatTimeToStr } from '@/utils/date'
+import { mapGetters } from 'vuex'
+import { checkPermission } from '@/utils/permission'
+import { debounce } from 'lodash'
+import { logOperation } from '@/utils/logger'
 
 export default {
   name: 'PointsManagement',
@@ -268,51 +272,112 @@ export default {
             picker.$emit('pick', [start, end])
           }
         }]
-      }
+      },
+      statistics: null,
+      permissions: {
+        add: 'points:add',
+        delete: 'points:delete',
+        export: 'points:export',
+        view: 'points:view'
+      },
+      searchHistory: [],
+      userPreferences: {
+        pageSize: 10,
+        defaultSearch: null
+      },
+      isMobile: false
+    }
+  },
+  computed: {
+    ...mapGetters(['userInfo', 'roles']),
+    
+    hasAddPermission() {
+      return checkPermission(this.permissions.add, this.roles)
+    },
+    
+    hasDeletePermission() {
+      return checkPermission(this.permissions.delete, this.roles)
+    },
+    
+    hasExportPermission() {
+      return checkPermission(this.permissions.export, this.roles)
     }
   },
   created() {
+    this.loadUserPreferences()
+    this.checkMobile()
     this.getPointsList()
+    this.getStatistics()
+    window.addEventListener('resize', debounce(this.checkMobile, 200))
+  },
+  beforeDestroy() {
+    this.saveUserPreferences()
+    window.removeEventListener('resize', this.checkMobile)
   },
   methods: {
-    // 获取积分列表
-    getPointsList() {
+    async getPointsList() {
       this.loading = true
-      const params = {
-        page: this.page,
-        pageSize: this.pageSize,
-        ...this.searchForm
-      }
-      
-      if (this.dateRange && this.dateRange.length === 2) {
-        params.start_date = this.dateRange[0]
-        params.end_date = this.dateRange[1]
-      }
-      
-      listPoints(params)
-        .then(res => {
-          this.loading = false
-          if (res.code === 0) {
-            this.tableData = res.data.list
-            this.total = res.data.total
-          } else {
-            this.$message.error(res.message || '获取积分列表失败')
+      try {
+        const params = {
+          page: this.page,
+          pageSize: this.pageSize,
+          ...this.searchForm
+        }
+        
+        if (this.dateRange && this.dateRange.length === 2) {
+          params.start_date = this.dateRange[0]
+          params.end_date = this.dateRange[1]
+        }
+        
+        const res = await listPoints(params)
+        if (res.code === 0) {
+          this.tableData = res.data.list
+          this.total = res.data.total
+          
+          if (this.tableData.length === 0 && this.total > 0 && this.page > 1) {
+            this.page = 1
+            this.getPointsList()
           }
-        })
-        .catch(err => {
-          this.loading = false
-          console.error(err)
-          this.$message.error('获取积分列表失败')
-        })
+        } else {
+          this.$message.error(res.message || '获取积分列表失败')
+        }
+      } catch (error) {
+        console.error('获取积分列表出错:', error)
+        this.$message.error('获取积分列表出错')
+      } finally {
+        this.loading = false
+      }
     },
     
-    // 处理查询
+    async getStatistics() {
+      try {
+        const res = await getPointsStatistics()
+        if (res.code === 0) {
+          this.statistics = res.data
+        }
+      } catch (error) {
+        console.error('获取统计数据出错:', error)
+      }
+    },
+    
     handleSearch() {
       this.page = 1
       this.getPointsList()
+      
+      const searchItem = {
+        ...this.searchForm,
+        dateRange: [...this.dateRange],
+        timestamp: new Date().getTime()
+      }
+      
+      this.searchHistory.unshift(searchItem)
+      if (this.searchHistory.length > 10) {
+        this.searchHistory.pop()
+      }
+      
+      localStorage.setItem('points_search_history', JSON.stringify(this.searchHistory))
     },
     
-    // 重置查询
     resetSearch() {
       this.searchForm = {
         user_id: '',
@@ -325,26 +390,43 @@ export default {
       this.getPointsList()
     },
     
-    // 处理每页数量变化
-    handleSizeChange(val) {
-      this.pageSize = val
-      this.getPointsList()
+    async handleViewDetail(row) {
+      if (!checkPermission(this.permissions.view, this.roles)) {
+        this.$message.warning('您没有查看详情的权限')
+        return
+      }
+      
+      try {
+        this.loading = true
+        const res = await getPointById(row.id)
+        if (res.code === 0) {
+          this.currentDetail = res.data
+          this.detailDialogVisible = true
+          
+          logOperation({
+            module: '积分管理',
+            operationType: '查看详情',
+            target: `积分记录ID: ${row.id}`,
+            operator: this.userInfo.username,
+            result: '成功'
+          })
+        } else {
+          this.$message.error(res.message || '获取详情失败')
+        }
+      } catch (error) {
+        console.error('获取详情出错:', error)
+        this.$message.error('获取详情出错')
+      } finally {
+        this.loading = false
+      }
     },
     
-    // 处理页码变化
-    handleCurrentChange(val) {
-      this.page = val
-      this.getPointsList()
-    },
-    
-    // 查看积分详情
-    handleViewDetail(row) {
-      this.currentDetail = row
-      this.detailDialogVisible = true
-    },
-    
-    // 打开添加积分弹窗
     handleAddPoints() {
+      if (!this.hasAddPermission) {
+        this.$message.warning('您没有调整积分的权限')
+        return
+      }
+      
       this.addForm = {
         user_id: '',
         type: 1,
@@ -353,69 +435,134 @@ export default {
         source: 'admin'
       }
       this.addDialogVisible = true
-      this.$nextTick(() => {
-        this.$refs.addForm && this.$refs.addForm.clearValidate()
-      })
     },
     
-    // 提交添加积分
-    submitAddPoints() {
-      this.$refs.addForm.validate(valid => {
-        if (valid) {
-          this.submitLoading = true
+    async submitAddPoints() {
+      if (!this.$refs.addForm) return
+      
+      this.$refs.addForm.validate(async valid => {
+        if (!valid) return
+        
+        this.submitLoading = true
+        try {
+          const data = {
+            user_id: this.addForm.user_id,
+            type: this.addForm.type,
+            points: this.addForm.points,
+            description: this.addForm.description,
+            source: 'admin',
+            operator_id: this.userInfo.id
+          }
           
-          addPoints(this.addForm)
-            .then(res => {
-              this.submitLoading = false
-              if (res.code === 0) {
-                this.$message.success('积分调整成功')
-                this.addDialogVisible = false
-                this.getPointsList() // 刷新列表
-              } else {
-                this.$message.error(res.message || '积分调整失败')
-              }
+          const res = await addPoints(data)
+          if (res.code === 0) {
+            this.$message.success('积分调整成功')
+            this.addDialogVisible = false
+            this.getPointsList()
+            this.getStatistics()
+            
+            logOperation({
+              module: '积分管理',
+              operationType: '调整积分',
+              target: `用户ID: ${data.user_id}, 积分: ${data.type === 1 ? '+' : '-'}${data.points}`,
+              operator: this.userInfo.username,
+              result: '成功'
             })
-            .catch(err => {
-              this.submitLoading = false
-              console.error(err)
-              this.$message.error('积分调整失败')
+          } else {
+            this.$message.error(res.message || '积分调整失败')
+            
+            logOperation({
+              module: '积分管理',
+              operationType: '调整积分',
+              target: `用户ID: ${data.user_id}, 积分: ${data.type === 1 ? '+' : '-'}${data.points}`,
+              operator: this.userInfo.username,
+              result: '失败',
+              errorMsg: res.message
             })
-        } else {
-          return false
+          }
+        } catch (error) {
+          console.error('调整积分出错:', error)
+          this.$message.error('调整积分出错')
+          
+          logOperation({
+            module: '积分管理',
+            operationType: '调整积分',
+            target: `用户ID: ${this.addForm.user_id}`,
+            operator: this.userInfo.username,
+            result: '失败',
+            errorMsg: error.message
+          })
+        } finally {
+          this.submitLoading = false
         }
       })
     },
     
-    // 删除(撤销)积分记录
-    handleDelete(row) {
-      this.$confirm('确定要撤销该积分调整吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        deletePoints(row.id)
-          .then(res => {
-            if (res.code === 0) {
-              this.$message.success('撤销成功')
-              this.getPointsList() // 刷新列表
-            } else {
-              this.$message.error(res.message || '撤销失败')
-            }
+    async handleDelete(row) {
+      if (!this.hasDeletePermission) {
+        this.$message.warning('您没有撤销权限')
+        return
+      }
+      
+      if (row.source !== 'admin') {
+        this.$message.warning('只能撤销管理员调整的积分')
+        return
+      }
+      
+      try {
+        await this.$confirm('确定要撤销此积分调整吗？此操作不可逆', '警告', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        
+        this.loading = true
+        const res = await deletePoints(row.id)
+        
+        if (res.code === 0) {
+          this.$message.success('撤销成功')
+          this.getPointsList()
+          this.getStatistics()
+          
+          logOperation({
+            module: '积分管理',
+            operationType: '撤销积分',
+            target: `积分记录ID: ${row.id}, 用户ID: ${row.user_id}`,
+            operator: this.userInfo.username,
+            result: '成功'
           })
-          .catch(err => {
-            console.error(err)
-            this.$message.error('撤销失败')
+        } else {
+          this.$message.error(res.message || '撤销失败')
+          
+          logOperation({
+            module: '积分管理',
+            operationType: '撤销积分',
+            target: `积分记录ID: ${row.id}, 用户ID: ${row.user_id}`,
+            operator: this.userInfo.username,
+            result: '失败',
+            errorMsg: res.message
           })
-      }).catch(() => {})
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('撤销积分出错:', error)
+          this.$message.error('撤销积分出错')
+        }
+      } finally {
+        this.loading = false
+      }
     },
     
-    // 导出数据
-    handleExport() {
-      this.$confirm('确定要导出当前查询条件下的积分记录吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'info'
-      }).then(() => {
+    async handleExport() {
+      if (!this.hasExportPermission) {
+        this.$message.warning('您没有导出权限')
+        return
+      }
+      
+      try {
+        this.loading = true
+        this.$message.info('正在导出数据，请稍候...')
+        
         const params = { ...this.searchForm }
         
         if (this.dateRange && this.dateRange.length === 2) {
@@ -423,72 +570,123 @@ export default {
           params.end_date = this.dateRange[1]
         }
         
-        exportPointsData(params)
-          .then(res => {
-            // 处理文件下载
-            const blob = new Blob([res.data], { type: 'application/vnd.ms-excel' })
-            const link = document.createElement('a')
-            link.href = URL.createObjectURL(blob)
-            link.download = '积分记录导出_' + new Date().getTime() + '.xlsx'
-            link.click()
-            URL.revokeObjectURL(link.href)
-            this.$message.success('导出成功')
-          })
-          .catch(err => {
-            console.error(err)
-            this.$message.error('导出失败')
-          })
-      }).catch(() => {})
-    },
-    
-    // 格式化日期
-    formatDate(time) {
-      if (time) {
-        return formatTimeToStr(time, 'yyyy-MM-dd HH:mm')
+        const res = await exportPointsData(params)
+        
+        const blob = new Blob([res], { type: 'application/vnd.ms-excel' })
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `积分记录_${new Date().getTime()}.xlsx`
+        link.click()
+        URL.revokeObjectURL(link.href)
+        
+        this.$message.success('导出成功')
+        
+        logOperation({
+          module: '积分管理',
+          operationType: '导出数据',
+          target: `积分记录`,
+          operator: this.userInfo.username,
+          result: '成功'
+        })
+      } catch (error) {
+        console.error('导出数据出错:', error)
+        this.$message.error('导出数据出错')
+        
+        logOperation({
+          module: '积分管理',
+          operationType: '导出数据',
+          target: `积分记录`,
+          operator: this.userInfo.username,
+          result: '失败',
+          errorMsg: error.message
+        })
+      } finally {
+        this.loading = false
       }
-      return ''
     },
     
-    // 格式化来源
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.userPreferences.pageSize = val
+      this.getPointsList()
+    },
+    
+    handleCurrentChange(val) {
+      this.page = val
+      this.getPointsList()
+    },
+    
+    formatDate(timestamp) {
+      return formatTimeToStr(timestamp, 'yyyy-MM-dd hh:mm:ss')
+    },
+    
     formatSource(source) {
       const sourceMap = {
         'sign': '签到',
         'purchase': '购买',
         'activity': '活动',
         'system': '系统',
-        'admin': '管理员调整'
+        'admin': '管理员调整',
+        'comment': '评论',
+        'share': '分享'
       }
       return sourceMap[source] || source
     },
     
-    // 获取来源标签类型
     getSourceTagType(source) {
       const typeMap = {
         'sign': 'success',
         'purchase': 'primary',
         'activity': 'warning',
         'system': 'info',
-        'admin': 'danger'
+        'admin': 'danger',
+        'comment': 'success',
+        'share': 'primary'
       }
-      return typeMap[source] || ''
+      return typeMap[source] || 'info'
     },
     
-    // 格式化关联信息
-    formatRelatedInfo(detail) {
-      if (!detail.related_id || !detail.related_type) {
-        return '无关联信息'
-      }
+    formatRelatedInfo(record) {
+      if (!record.related_id || !record.related_type) return '无'
       
       const typeMap = {
-        'article': '文章',
-        'product': '商品',
+        'order': '订单',
+        'activity': '活动',
         'comment': '评论',
-        'sign': '签到',
-        'order': '订单'
+        'share': '分享'
       }
       
-      const relatedType = typeMap[detail.related_type] || detail.related_type
-      return `${relatedType} ID: ${detail.related_id}`
+      return `${typeMap[record.related_type] || record.related_type}ID: ${record.related_id}`
+    },
+    
+    loadUserPreferences() {
+      try {
+        const savedPrefs = localStorage.getItem('points_preferences')
+        if (savedPrefs) {
+          const prefs = JSON.parse(savedPrefs)
+          this.userPreferences = { ...this.userPreferences, ...prefs }
+          this.pageSize = prefs.pageSize || 10
+        }
+        
+        const searchHistory = localStorage.getItem('points_search_history')
+        if (searchHistory) {
+          this.searchHistory = JSON.parse(searchHistory)
+        }
+      } catch (error) {
+        console.error('加载用户偏好设置出错:', error)
+      }
+    },
+    
+    saveUserPreferences() {
+      try {
+        localStorage.setItem('points_preferences', JSON.stringify(this.userPreferences))
+      } catch (error) {
+        console.error('保存用户偏好设置出错:', error)
+      }
+    },
+    
+    checkMobile() {
+      this.isMobile = window.innerWidth < 768
     }
   }
 }

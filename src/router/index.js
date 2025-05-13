@@ -6,6 +6,7 @@ import linksRoutes from './links'
 import siteConfigRoutes from './site_config'
 import statisticsRoutes from './statistics'
 import userRoutes from './user'
+import tradeRoutes from './modules/trade'
 
 Vue.use(Router)
 
@@ -79,6 +80,9 @@ export const asyncRoutes = [
   
   // 整合用户相关路由
   ...userRoutes,
+  
+  // 整合交易管理路由
+  ...tradeRoutes,
   
   // 404页面必须放在最后
   { path: '*', redirect: '/404', hidden: true }

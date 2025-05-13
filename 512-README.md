@@ -211,7 +211,6 @@ wz-backend-web/
 │           └── favorites.js         # 收藏管理API接口
 ```
 
-
 ## 后续计划
 
 1. 对接实际后端API，完成前后端联调
