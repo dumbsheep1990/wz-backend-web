@@ -149,7 +149,7 @@ wz-backend-web/
           </el-form-item>
         </el-form>
       </div>
-      
+
       <!-- 订单列表 -->
       <el-table
         :data="tableData"
@@ -159,7 +159,7 @@ wz-backend-web/
       >
         <!-- 表格列定义 -->
       </el-table>
-      
+
       <!-- 分页 -->
       <div class="pagination" v-if="total > 0">
         <el-pagination
@@ -209,12 +209,12 @@ export default {
           pageSize: this.pageSize,
           ...this.searchForm
         }
-        
+
         if (this.dateRange && this.dateRange.length === 2) {
           params.start_date = this.dateRange[0]
           params.end_date = this.dateRange[1]
         }
-        
+
         const res = await listOrders(params)
         if (res.code === 0) {
           this.tableData = res.data.list
@@ -246,7 +246,7 @@ export default {
       <div slot="header" class="config-header">
         <span>支付方式配置</span>
       </div>
-      
+
       <el-tabs v-model="activeTab">
         <el-tab-pane label="支付宝配置" name="alipay">
           <el-form :model="alipayConfig" :rules="alipayRules" ref="alipayForm" label-width="120px">
@@ -263,7 +263,7 @@ export default {
             </el-form-item>
           </el-form>
         </el-tab-pane>
-        
+
         <el-tab-pane label="微信支付配置" name="wechat">
           <!-- 微信支付配置表单 -->
         </el-tab-pane>
@@ -344,7 +344,6 @@ export default {
 ```
 
 ## 设计与开发原则
-
 
 ### 1. 组件化开发
 

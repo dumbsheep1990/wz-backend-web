@@ -8,6 +8,7 @@ import linksRouter from './links'
 import siteConfigRouter from './site_config'
 import statisticsRouter from './statistics'
 import userRouter from './user'
+import systemRouter from './system'
 
 const routes = [
   {
@@ -33,6 +34,7 @@ const routes = [
   siteConfigRouter,
   statisticsRouter,
   userRouter,
+  systemRouter,
   {
     path: '/scanUpload',
     name: 'ScanUpload',

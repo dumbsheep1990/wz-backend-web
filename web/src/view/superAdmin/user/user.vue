@@ -28,8 +28,15 @@
         <el-button type="primary" icon="plus" @click="addUser"
           >新增用户</el-button
         >
+        <el-button type="danger" icon="delete" :disabled="!multipleSelection.length" @click="deleteMultipleUsers"
+          >批量删除</el-button
+        >
       </div>
-      <el-table :data="tableData" row-key="ID">
+      <el-table 
+        :data="tableData" 
+        row-key="ID"
+        @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" />
         <el-table-column align="left" label="头像" min-width="75">
           <template #default="scope">
             <CustomPic style="margin-top: 8px" :pic-src="scope.row.headerImg" />
@@ -110,6 +117,13 @@
             <el-button
               type="primary"
               link
+              icon="view"
+              @click="viewUserDetail(scope.row)"
+              >详情</el-button
+            >
+            <el-button
+              type="primary"
+              link
               icon="delete"
               @click="deleteUserFunc(scope.row)"
               >删除</el-button
@@ -128,6 +142,18 @@
               @click="resetPasswordFunc(scope.row)"
               >重置密码</el-button
             >
+            <el-dropdown>
+              <el-button link type="primary">
+                更多<el-icon class="el-icon--right"><arrow-down /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="setUserAuthorities(scope.row)">设置权限组</el-dropdown-item>
+                  <el-dropdown-item @click="setUserDataAuthority(scope.row)">设置数据权限</el-dropdown-item>
+                  <el-dropdown-item @click="setUserStatus(scope.row)">设置状态</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -269,6 +295,7 @@
   import { ElMessage, ElMessageBox } from 'element-plus'
   import SelectImage from '@/components/selectImage/selectImage.vue'
   import { useAppStore } from "@/pinia";
+  import { ArrowDown } from '@element-plus/icons-vue'
 
   defineOptions({
     name: 'User'
@@ -599,6 +626,88 @@
       userInfo.value.headerImg = ''
       userInfo.value.authorityIds = []
     }
+  }
+
+  const multipleSelection = ref([])
+  const handleSelectionChange = (val) => {
+    multipleSelection.value = val
+  }
+
+  const deleteMultipleUsers = () => {
+    if (multipleSelection.value.length === 0) {
+      ElMessage({
+        type: 'warning',
+        message: '请选择要删除的用户'
+      })
+      return
+    }
+
+    ElMessageBox.confirm('确定要删除选中的' + multipleSelection.value.length + '个用户吗?', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }).then(() => {
+      const ids = multipleSelection.value.map(item => item.ID)
+      deleteUsersByIds({ ids }).then(res => {
+        if (res.code === 0) {
+          ElMessage({
+            type: 'success',
+            message: '批量删除成功!'
+          })
+          getTableData()
+        }
+      })
+    }).catch(() => {
+      ElMessage({
+        type: 'info',
+        message: '已取消删除'
+      })
+    })
+  }
+
+  const viewUserDetail = (row) => {
+    router.push({
+      name: 'UserDetail',
+      query: { id: row.ID }
+    })
+  }
+
+  const setUserAuthorities = (row) => {
+    $refs.authoritiesDrawer.open(row)
+  }
+
+  const setUserDataAuthority = (row) => {
+    $refs.dataAuthorityDrawer.open(row)
+  }
+
+  const setUserStatus = (row) => {
+    $prompt('请选择用户状态', '状态设置', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputType: 'select',
+      inputValue: row.status,
+      inputPlaceholder: '请选择用户状态',
+      inputOptions: [
+        { value: 1, label: '正常' },
+        { value: 2, label: '禁用' },
+        { value: 3, label: '锁定' },
+      ]
+    }).then(({ value }) => {
+      setUserStatus({ userId: row.ID, status: value }).then(res => {
+        if (res.code === 0) {
+          ElMessage({
+            type: 'success',
+            message: '状态设置成功!'
+          })
+          getTableData()
+        }
+      })
+    }).catch(() => {
+      ElMessage({
+        type: 'info',
+        message: '取消设置'
+      });
+    });
   }
 </script>
 

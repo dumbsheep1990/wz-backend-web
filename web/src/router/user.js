@@ -8,6 +8,25 @@ export default {
   },
   children: [
     {
+      path: 'admin',
+      name: 'admin',
+      component: () => import('@/view/superAdmin/user/user.vue'),
+      meta: {
+        title: '用户管理',
+        icon: 'coordinate'
+      }
+    },
+    {
+      path: 'user-detail',
+      name: 'UserDetail',
+      component: () => import('@/view/superAdmin/user/userDetail.vue'),
+      meta: {
+        title: '用户详情',
+        icon: 'user',
+        hidden: true // 在侧边栏菜单中隐藏
+      }
+    },
+    {
       path: 'message',
       name: 'userMessage',
       component: () => import('@/view/user/message/index.vue'),
