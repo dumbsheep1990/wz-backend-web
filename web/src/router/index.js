@@ -9,6 +9,11 @@ import siteConfigRouter from './site_config'
 import statisticsRouter from './statistics'
 import userRouter from './user'
 import systemRouter from './system'
+// 新增路由模块
+import favoritesRouter from './favorites'
+import tenantRouter from './tenant'
+// 以下路由文件还未创建完成
+// import pointsRouter from './points'
 
 const routes = [
   {
@@ -35,6 +40,11 @@ const routes = [
   statisticsRouter,
   userRouter,
   systemRouter,
+  // 新增路由模块
+  favoritesRouter,
+  tenantRouter,
+  // 以下路由文件还未创建完成页面
+  // pointsRouter,
   {
     path: '/scanUpload',
     name: 'ScanUpload',

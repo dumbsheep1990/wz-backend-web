@@ -1,7 +1,7 @@
 export default {
   path: '/recommend',
   name: 'recommend',
-  component: () => import('@/view/layout/routerView/layout.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '推荐系统',
     icon: 'thumbs-up'
@@ -10,7 +10,7 @@ export default {
     {
       path: 'rules',
       name: 'recommendRules',
-      component: () => import('@/view/recommend/rules/index.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '推荐规则管理',
         icon: 'tools'
@@ -19,7 +19,7 @@ export default {
     {
       path: 'hotContent',
       name: 'hotContent',
-      component: () => import('@/view/recommend/hotContent/index.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '热门内容管理',
         icon: 'fire'
@@ -28,7 +28,7 @@ export default {
     {
       path: 'hotKeywords',
       name: 'hotKeywords',
-      component: () => import('@/view/recommend/hotKeywords/index.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '热门关键词',
         icon: 'tag'
@@ -37,7 +37,7 @@ export default {
     {
       path: 'hotCategories',
       name: 'hotCategories',
-      component: () => import('@/view/recommend/hotCategories/index.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '热门分类',
         icon: 'folder'

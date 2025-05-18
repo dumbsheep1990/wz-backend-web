@@ -1,7 +1,7 @@
 export default {
   path: '/statistics',
   name: 'statistics',
-  component: () => import('@/view/layout/routerView/layout.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '统计分析',
     icon: 'chart-line'
@@ -35,4 +35,4 @@ export default {
       }
     }
   ]
-} 
+}

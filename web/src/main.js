@@ -13,6 +13,16 @@ import run from '@/core/gin-vue-admin.js'
 import auth from '@/directive/auth'
 import { store } from '@/pinia'
 import App from './App.vue'
+// 引入mock服务
+import { setupMock } from '@/mock'
+// 引入XHR拦截器
+import { setupMockXHR } from './mock-xhr'
+
+// 启用mock服务（强制开启，无论什么环境）
+setupMock()
+
+// 启用XHR拦截器，模拟所有API请求
+setupMockXHR()
 
 const app = createApp(App)
 app.config.productionTip = false

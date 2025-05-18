@@ -1,7 +1,7 @@
 export default {
   path: '/user',
   name: 'user',
-  component: () => import('@/view/layout/routerView/layout.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '用户管理',
     icon: 'user'
@@ -10,9 +10,9 @@ export default {
     {
       path: 'admin',
       name: 'admin',
-      component: () => import('@/view/superAdmin/user/user.vue'),
+      component: () => import('@/view/user/index.vue'),
       meta: {
-        title: '用户管理',
+        title: '用户列表',
         icon: 'coordinate'
       }
     },
@@ -54,4 +54,4 @@ export default {
       }
     }
   ]
-} 
+}

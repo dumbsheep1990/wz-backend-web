@@ -1,7 +1,7 @@
 export default {
   path: '/system',
   name: 'System',
-  component: () => import('@/view/layout/routerView/parent.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '系统管理',
     icon: 'setting'

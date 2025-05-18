@@ -1,7 +1,7 @@
 export default {
   path: '/ad',
   name: 'ad',
-  component: () => import('@/view/layout/routerView/layout.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '广告管理',
     icon: 'advertisement'
@@ -10,7 +10,7 @@ export default {
     {
       path: 'space',
       name: 'adSpace',
-      component: () => import('@/view/ad/adSpace/index.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '广告位管理',
         icon: 'rectangle-ad'
@@ -19,7 +19,7 @@ export default {
     {
       path: 'content',
       name: 'adContent',
-      component: () => import('@/view/ad/adContent/index.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '广告内容管理',
         icon: 'image-ad'
@@ -28,7 +28,7 @@ export default {
     {
       path: 'statistics',
       name: 'adStatistics',
-      component: () => import('@/view/ad/adStatistics/index.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '广告统计',
         icon: 'chart-line'

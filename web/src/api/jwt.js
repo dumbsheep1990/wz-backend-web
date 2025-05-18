@@ -1,4 +1,8 @@
 import service from '@/utils/request'
+
+// MOCK模式标志，与user.js保持一致
+const USE_MOCK = true;
+
 // @Tags jwt
 // @Summary jwt加入黑名单
 // @Security ApiKeyAuth
@@ -7,6 +11,21 @@ import service from '@/utils/request'
 // @Success 200 {string} string "{"success":true,"data":{},"msg":"拉黑成功"}"
 // @Router /jwt/jsonInBlacklist [post]
 export const jsonInBlacklist = () => {
+  // 如果使用MOCK模式
+  if (USE_MOCK) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // 返回成功响应
+        resolve({
+          code: 0,
+          data: {},
+          msg: '登出成功'
+        });
+      }, 200);
+    });
+  }
+  
+  // 如果不使用MOCK模式，发送真实请求
   return service({
     url: '/jwt/jsonInBlacklist',
     method: 'post'

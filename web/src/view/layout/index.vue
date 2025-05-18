@@ -1,5 +1,10 @@
 <template>
+  <!-- 使用现代化布局 -->
+  <modern-layout v-if="useModernLayout" />
+  
+  <!-- 使用传统布局 -->
   <div
+    v-else
     class="bg-gray-50 text-slate-700 dark:text-slate-500 dark:bg-slate-800 w-screen h-screen"
   >
     <el-watermark
@@ -51,11 +56,12 @@
 <script setup>
   import GvaAside from '@/view/layout/aside/index.vue'
   import GvaHeader from '@/view/layout/header/index.vue'
+  import ModernLayout from '@/view/layout/modernLayout.vue'
   import useResponsive from '@/hooks/responsive'
   import GvaTabs from './tabs/index.vue'
   import BottomInfo from '@/components/bottomInfo/bottomInfo.vue'
   import { emitter } from '@/utils/bus.js'
-  import { ref, onMounted, nextTick, reactive, watchEffect } from 'vue'
+  import { ref, onMounted, nextTick, reactive, watchEffect, computed } from 'vue'
   import { useRouter, useRoute } from 'vue-router'
   import { useRouterStore } from '@/pinia/modules/router'
   import { useUserStore } from '@/pinia/modules/user'
@@ -72,6 +78,13 @@
   useResponsive(true)
   const font = reactive({
     color: 'rgba(0, 0, 0, .15)'
+  })
+
+  // 判断是否使用现代化布局
+  const useModernLayout = computed(() => {
+    // 从localStorage中读取设置，如果存在则使用，否则默认为false
+    const useModern = localStorage.getItem('use-modern-layout')
+    return useModern === 'true'
   })
 
   watchEffect(() => {

@@ -1,7 +1,7 @@
 export default {
   path: '/trade',
   name: 'trade',
-  component: () => import('@/view/layout/routerView/parent.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '交易管理',
     icon: 'shopping-cart'
@@ -10,7 +10,7 @@ export default {
     {
       path: 'order',
       name: 'order',
-      component: () => import('@/view/layout/routerView/parent.vue'),
+      component: () => import('@/view/routerHolder.vue'),
       meta: {
         title: '订单管理',
         icon: 'tickets'
@@ -40,7 +40,7 @@ export default {
     {
       path: 'refund',
       name: 'refund',
-      component: () => import('@/view/layout/routerView/parent.vue'),
+      component: () => import('@/view/routerHolder.vue'),
       meta: {
         title: '退款管理',
         icon: 'money'
@@ -77,6 +77,15 @@ export default {
       }
     },
     {
+      path: 'payment',
+      name: 'paymentConfig',
+      component: () => import('@/view/trade/payment/config.vue'),
+      meta: {
+        title: '支付配置',
+        icon: 'money'
+      }
+    },
+    {
       path: 'report',
       name: 'financialReport',
       component: () => import('@/view/trade/report/financialReport.vue'),
@@ -86,4 +95,4 @@ export default {
       }
     }
   ]
-} 
+}

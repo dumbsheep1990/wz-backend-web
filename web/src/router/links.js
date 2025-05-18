@@ -1,7 +1,7 @@
 export default {
   path: '/links',
   name: 'links',
-  component: () => import('@/view/layout/routerView/layout.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '友情链接',
     icon: 'link'
@@ -17,4 +17,4 @@ export default {
       }
     }
   ]
-} 
+}

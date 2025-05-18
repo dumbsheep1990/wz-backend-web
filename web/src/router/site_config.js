@@ -1,7 +1,7 @@
 export default {
   path: '/site',
   name: 'site',
-  component: () => import('@/view/layout/routerView/layout.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '站点设置',
     icon: 'cog'
@@ -26,4 +26,4 @@ export default {
       }
     }
   ]
-} 
+}

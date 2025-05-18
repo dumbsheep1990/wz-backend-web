@@ -1,7 +1,7 @@
 export default {
   path: '/content',
   name: 'content',
-  component: () => import('@/view/layout/routerView/layout.vue'),
+  component: () => import('@/view/routerHolder.vue'),
   meta: {
     title: '内容管理',
     icon: 'file-alt'
@@ -44,4 +44,4 @@ export default {
       }
     }
   ]
-} 
+}

@@ -7,8 +7,20 @@ import { ElLoading } from 'element-plus'
 // 添加一个状态变量，用于跟踪是否已有错误弹窗显示
 let errorBoxVisible = false
 
+// MOCK数据
+const ENABLE_MOCK = true; // 启用内联mock
+
+// 内置Mock数据状态
+const mockState = {
+  isLoggedIn: false,
+  loginAttempts: 0,
+  token: '',
+  userInfo: null
+};
+
+// 创建axios实例
 const service = axios.create({
-  baseURL: import.meta.env.VITE_BASE_API,
+  baseURL: '/',
   timeout: 99999
 })
 let activeAxios = 0
