@@ -136,19 +136,38 @@ const mockResponses = {
   sideNavigationItems: [
     {
       id: 1,
-      title: '系统设置',
-      url: '/system',
-      icon: 'setting',
+      title: '仪表盘',
+      url: '/dashboard',
+      icon: 'Odometer',
       parent_id: 0,
       sort: 1,
       status: 1
     },
+    // 核心业务管理
     {
       id: 2,
       title: '用户管理',
       url: '/user',
-      icon: 'user',
+      icon: 'User',
       parent_id: 0,
+      sort: 2,
+      status: 1
+    },
+    {
+      id: 21,
+      title: '用户列表',
+      url: '/user/list',
+      icon: 'User',
+      parent_id: 2,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 22,
+      title: '用户角色',
+      url: '/user/roles',
+      icon: 'UserFilled',
+      parent_id: 2,
       sort: 2,
       status: 1
     },
@@ -156,108 +175,454 @@ const mockResponses = {
       id: 3,
       title: '内容管理',
       url: '/content',
-      icon: 'document',
+      icon: 'Document',
       parent_id: 0,
       sort: 3,
-      status: 1
-    },
-    {
-      id: 4,
-      title: '文章管理',
-      url: '/content/article',
-      icon: 'notebook',
-      parent_id: 3, // 作为内容管理的子菜单
-      sort: 1,
-      status: 1
-    },
-    {
-      id: 5,
-      title: '分类管理',
-      url: '/content/category',
-      icon: 'collection',
-      parent_id: 3, // 作为内容管理的子菜单
-      sort: 2,
-      status: 1
-    },
-    {
-      id: 6,
-      title: '导航管理',
-      url: '/navigation',
-      icon: 'compass',
-      parent_id: 0,
-      sort: 3,
-      status: 1
-    },
-    {
-      id: 7,
-      title: '侧边导航配置',
-      url: '/navigation/side',
-      icon: 'indent',
-      parent_id: 6, // 作为导航管理的子菜单
-      sort: 1,
-      status: 1
-    },
-    {
-      id: 20,
-      title: '收藏管理',
-      url: '/favorites',
-      icon: 'star',
-      parent_id: 0,
-      sort: 5,
-      status: 1
-    },
-    {
-      id: 21,
-      title: '收藏列表',
-      url: '/favorites/list',
-      icon: 'list',
-      parent_id: 20,
-      sort: 1,
-      status: 1
-    },
-    {
-      id: 22,
-      title: '收藏统计',
-      url: '/favorites/statistics',
-      icon: 'pie-chart',
-      parent_id: 20,
-      sort: 2,
-      status: 1
-    },
-    {
-      id: 30,
-      title: '租户管理',
-      url: '/tenant',
-      icon: 'office-building',
-      parent_id: 0,
-      sort: 6,
       status: 1
     },
     {
       id: 31,
-      title: '租户列表',
-      url: '/tenant/list',
-      icon: 'list',
-      parent_id: 30,
+      title: '文章管理',
+      url: '/content/article',
+      icon: 'Reading',
+      parent_id: 3,
       sort: 1,
       status: 1
     },
     {
       id: 32,
-      title: '创建租户',
-      url: '/tenant/create',
-      icon: 'plus',
-      parent_id: 30,
+      title: '分类管理',
+      url: '/content/category',
+      icon: 'FolderOpened',
+      parent_id: 3,
+      sort: 2,
+      status: 1
+    },
+    {
+      id: 33,
+      title: '标签管理',
+      url: '/content/tag',
+      icon: 'Collection',
+      parent_id: 3,
+      sort: 3,
+      status: 1
+    },
+    {
+      id: 34,
+      title: '评论管理',
+      url: '/content/comment',
+      icon: 'ChatDotSquare',
+      parent_id: 3,
+      sort: 4,
+      status: 1
+    },
+    {
+      id: 4,
+      title: '栏目管理',
+      url: '/column',
+      icon: 'Grid',
+      parent_id: 0,
+      sort: 4,
+      status: 1
+    },
+    {
+      id: 41,
+      title: '栏目列表',
+      url: '/column/list',
+      icon: 'List',
+      parent_id: 4,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 42,
+      title: '栏目分类',
+      url: '/column/category',
+      icon: 'Connection',
+      parent_id: 4,
+      sort: 2,
+      status: 1
+    },
+    {
+      id: 5,
+      title: '审核管理',
+      url: '/audit',
+      icon: 'Warning',
+      parent_id: 0,
+      sort: 5,
+      status: 1
+    },
+    {
+      id: 51,
+      title: '文章审核',
+      url: '/audit/article',
+      icon: 'Document',
+      parent_id: 5,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 52,
+      title: '评论审核',
+      url: '/audit/comment',
+      icon: 'ChatDotSquare',
+      parent_id: 5,
+      sort: 2,
+      status: 1
+    },
+    {
+      id: 6,
+      title: '社区管理',
+      url: '/community',
+      icon: 'Service',
+      parent_id: 0,
+      sort: 6,
+      status: 1
+    },
+    {
+      id: 61,
+      title: '帖子管理',
+      url: '/community/post',
+      icon: 'ChatLineRound',
+      parent_id: 6,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 62,
+      title: '评论管理',
+      url: '/community/comment',
+      icon: 'ChatDotSquare',
+      parent_id: 6,
+      sort: 2,
+      status: 1
+    },
+    {
+      id: 63,
+      title: '群组管理',
+      url: '/community/group',
+      icon: 'Avatar',
+      parent_id: 6,
+      sort: 3,
+      status: 1
+    },
+    // 交易与物流
+    {
+      id: 7,
+      title: '订单管理',
+      url: '/order',
+      icon: 'Tickets',
+      parent_id: 0,
+      sort: 7,
+      status: 1
+    },
+    {
+      id: 71,
+      title: '订单列表',
+      url: '/order/list',
+      icon: 'List',
+      parent_id: 7,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 72,
+      title: '待处理订单',
+      url: '/order/pending',
+      icon: 'Clock',
+      parent_id: 7,
       sort: 2,
       status: 1
     },
     {
       id: 8,
-      title: '侧边导航相关接口',
-      url: '/api/v1/admin/navigation/side',
-      icon: 'api',
-      parent_id: 7, // 作为侧边导航配置的子菜单
+      title: '交易管理',
+      url: '/trade',
+      icon: 'ShoppingCart',
+      parent_id: 0,
+      sort: 8,
+      status: 1
+    },
+    {
+      id: 81,
+      title: '退款管理',
+      url: '/trade/refund',
+      icon: 'Money',
+      parent_id: 8,
       sort: 1,
+      status: 1
+    },
+    {
+      id: 82,
+      title: '支付配置',
+      url: '/trade/payment',
+      icon: 'CreditCard',
+      parent_id: 8,
+      sort: 2,
+      status: 1
+    },
+    {
+      id: 9,
+      title: '物流管理',
+      url: '/logistics',
+      icon: 'Van',
+      parent_id: 0,
+      sort: 9,
+      status: 1
+    },
+    {
+      id: 91,
+      title: '发货管理',
+      url: '/logistics/shipping',
+      icon: 'Box',
+      parent_id: 9,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 92,
+      title: '订单跟踪',
+      url: '/logistics/tracking',
+      icon: 'Location',
+      parent_id: 9,
+      sort: 2,
+      status: 1
+    },
+    // 网站功能与配置
+    {
+      id: 10,
+      title: '网站管理',
+      url: '/site',
+      icon: 'Monitor',
+      parent_id: 0,
+      sort: 10,
+      status: 1
+    },
+    {
+      id: 101,
+      title: '网站设置',
+      url: '/site/settings',
+      icon: 'Setting',
+      parent_id: 10,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 102,
+      title: '轮播图管理',
+      url: '/site/banners',
+      icon: 'Picture',
+      parent_id: 10,
+      sort: 2,
+      status: 1
+    },
+    {
+      id: 11,
+      title: '导航管理',
+      url: '/navigation',
+      icon: 'Menu',
+      parent_id: 0,
+      sort: 11,
+      status: 1
+    },
+    {
+      id: 111,
+      title: '菜单管理',
+      url: '/navigation/menu',
+      icon: 'Menu',
+      parent_id: 11,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 12,
+      title: '租户管理',
+      url: '/tenant',
+      icon: 'OfficeBuilding',
+      parent_id: 0,
+      sort: 12,
+      status: 1
+    },
+    {
+      id: 121,
+      title: '租户列表',
+      url: '/tenant/list',
+      icon: 'List',
+      parent_id: 12,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 122,
+      title: '创建租户',
+      url: '/tenant/create',
+      icon: 'Plus',
+      parent_id: 12,
+      sort: 2,
+      status: 1
+    },
+    // 营销与数据
+    {
+      id: 13,
+      title: '推荐系统',
+      url: '/recommend',
+      icon: 'Histogram',
+      parent_id: 0,
+      sort: 13,
+      status: 1
+    },
+    {
+      id: 131,
+      title: '推荐规则',
+      url: '/recommend/rules',
+      icon: 'Tickets',
+      parent_id: 13,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 14,
+      title: '广告管理',
+      url: '/ad',
+      icon: 'Picture',
+      parent_id: 0,
+      sort: 14,
+      status: 1
+    },
+    {
+      id: 141,
+      title: '广告位',
+      url: '/ad/spaces',
+      icon: 'Monitor',
+      parent_id: 14,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 15,
+      title: '搜索管理',
+      url: '/search',
+      icon: 'Search',
+      parent_id: 0,
+      sort: 15,
+      status: 1
+    },
+    {
+      id: 151,
+      title: '搜索配置',
+      url: '/search/config',
+      icon: 'Setting',
+      parent_id: 15,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 16,
+      title: '积分管理',
+      url: '/points',
+      icon: 'GoldMedal',
+      parent_id: 0,
+      sort: 16,
+      status: 1
+    },
+    {
+      id: 161,
+      title: '积分规则',
+      url: '/points/rules',
+      icon: 'Memo',
+      parent_id: 16,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 17,
+      title: '收藏管理',
+      url: '/favorites',
+      icon: 'Star',
+      parent_id: 0,
+      sort: 17,
+      status: 1
+    },
+    {
+      id: 171,
+      title: '收藏列表',
+      url: '/favorites/list',
+      icon: 'List',
+      parent_id: 17,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 172,
+      title: '收藏统计',
+      url: '/favorites/statistics',
+      icon: 'PieChart',
+      parent_id: 17,
+      sort: 2,
+      status: 1
+    },
+    {
+      id: 18,
+      title: '链接管理',
+      url: '/links',
+      icon: 'Link',
+      parent_id: 0,
+      sort: 18,
+      status: 1
+    },
+    {
+      id: 181,
+      title: '链接列表',
+      url: '/links/list',
+      icon: 'List',
+      parent_id: 18,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 19,
+      title: '统计分析',
+      url: '/analytics',
+      icon: 'TrendCharts',
+      parent_id: 0,
+      sort: 19,
+      status: 1
+    },
+    {
+      id: 191,
+      title: '数据概览',
+      url: '/analytics/overview',
+      icon: 'DataAnalysis',
+      parent_id: 19,
+      sort: 1,
+      status: 1
+    },
+    // 系统配置
+    {
+      id: 20,
+      title: '系统管理',
+      url: '/system',
+      icon: 'Setting',
+      parent_id: 0,
+      sort: 20,
+      status: 1
+    },
+    {
+      id: 201,
+      title: '系统配置',
+      url: '/system/config',
+      icon: 'Setting',
+      parent_id: 20,
+      sort: 1,
+      status: 1
+    },
+    {
+      id: 202,
+      title: 'JWT管理',
+      url: '/system/jwt',
+      icon: 'Key',
+      parent_id: 20,
+      sort: 2,
       status: 1
     }
   ],
@@ -347,11 +712,76 @@ const mockResponses = {
     
     // 对特殊URL进行映射
     const specialPaths = {
+      // 基本路径
+      'dashboard': 'view/dashboard/index.vue',
       'user': 'view/user/index.vue',
       'system': 'view/system/index.vue',
-      'navigation/side': 'view/navigation/side/index.vue',
+      
+      // 用户相关
+      'user/list': 'view/user/index.vue',
+      'user/roles': 'view/EmptyPage.vue', // 未找到对应组件，使用占位符
+      
+      // 内容管理
+      'content': 'view/content/index.vue',
       'content/article': 'view/content/article/index.vue',
-      'content/category': 'view/content/category/index.vue'
+      'content/category': 'view/content/category/index.vue',
+      'content/tag': 'view/content/tag/index.vue',
+      'content/comment': 'view/content/comment/index.vue',
+      
+      // 栏目管理（新增）
+      'column': 'view/EmptyPage.vue',
+      'column/list': 'view/EmptyPage.vue',
+      'column/category': 'view/EmptyPage.vue',
+      
+      // 审核管理（新增）
+      'audit': 'view/EmptyPage.vue',
+      'audit/article': 'view/EmptyPage.vue',
+      'audit/comment': 'view/EmptyPage.vue',
+      
+      // 社区管理
+      'community': 'view/community/index.vue',
+      'community/post': 'view/EmptyPage.vue',
+      'community/comment': 'view/EmptyPage.vue',
+      'community/group': 'view/EmptyPage.vue',
+      
+      // 订单管理（新增）
+      'order': 'view/EmptyPage.vue',
+      'order/list': 'view/EmptyPage.vue',
+      'order/pending': 'view/EmptyPage.vue',
+      
+      // 交易管理
+      'trade': 'view/trade/index.vue',
+      'trade/refund': 'view/EmptyPage.vue',
+      'trade/payment': 'view/EmptyPage.vue',
+      
+      // 物流管理（新增）
+      'logistics': 'view/EmptyPage.vue',
+      'logistics/shipping': 'view/EmptyPage.vue',
+      'logistics/tracking': 'view/EmptyPage.vue',
+      
+      // 网站管理
+      'site': 'view/EmptyPage.vue',
+      'site/settings': 'view/EmptyPage.vue',
+      'site/banners': 'view/EmptyPage.vue',
+      
+      // 导航管理
+      'navigation': 'view/navigation/index.vue',
+      'navigation/side': 'view/navigation/side/index.vue',
+      'navigation/menu': 'view/navigation/menu/index.vue',
+      
+      // 租户管理
+      'tenant': 'view/tenant/index.vue',
+      'tenant/list': 'view/tenant/list/index.vue',
+      'tenant/create': 'view/tenant/create/index.vue',
+      
+      // 其他管理模块（使用占位符，等待开发）
+      'recommend': 'view/EmptyPage.vue',
+      'ad': 'view/EmptyPage.vue',
+      'search': 'view/EmptyPage.vue',
+      'points': 'view/EmptyPage.vue',
+      'favorites': 'view/favorites/index.vue',
+      'links': 'view/EmptyPage.vue',
+      'analytics': 'view/EmptyPage.vue'
     };
     
     if (specialPaths[path]) {
@@ -359,6 +789,15 @@ const mockResponses = {
     }
     
     // 一般情况下，尝试构造标准路径
+    // 如果无法确定，返回空白页面
+    const lastSlashIndex = path.lastIndexOf('/');
+    if (lastSlashIndex > 0) {
+      const parentPath = path.substring(0, lastSlashIndex);
+      if (specialPaths[parentPath]) {
+        return 'view/EmptyPage.vue'; // 父路径存在但子路径未定义，使用占位符
+      }
+    }
+    
     return `view/${path}/index.vue`;
   },
   

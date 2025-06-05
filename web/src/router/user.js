@@ -1,56 +1,65 @@
 export default {
   path: '/user',
   name: 'user',
-  component: () => import('@/view/routerHolder.vue'),
+  component: () => import('../view/routerHolder.vue'),
   meta: {
     title: '用户管理',
     icon: 'user'
   },
   children: [
     {
-      path: 'admin',
-      name: 'admin',
-      component: () => import('@/view/user/index.vue'),
+      path: 'list',
+      name: 'userList',
+      component: () => import('../view/user/index.vue'),
       meta: {
         title: '用户列表',
-        icon: 'coordinate'
+        icon: 'users'
       }
     },
     {
-      path: 'user-detail',
-      name: 'UserDetail',
-      component: () => import('@/view/superAdmin/user/userDetail.vue'),
+      path: 'roles',
+      name: 'userRoles',
+      component: () => import('../view/EmptyPage.vue'),
       meta: {
-        title: '用户详情',
-        icon: 'user',
-        hidden: true // 在侧边栏菜单中隐藏
-      }
-    },
-    {
-      path: 'message',
-      name: 'userMessage',
-      component: () => import('@/view/user/message/index.vue'),
-      meta: {
-        title: '消息管理',
-        icon: 'envelope'
+        title: '用户角色',
+        icon: 'user-tag'
       }
     },
     {
       path: 'points',
       name: 'userPoints',
-      component: () => import('@/view/user/points/index.vue'),
+      component: () => import('../view/user/points/index.vue'),
       meta: {
-        title: '积分管理',
+        title: '用户积分',
         icon: 'coins'
       }
     },
     {
       path: 'favorites',
       name: 'userFavorites',
-      component: () => import('@/view/user/favorites/index.vue'),
+      component: () => import('../view/user/favorites/index.vue'),
       meta: {
-        title: '收藏管理',
+        title: '用户收藏',
         icon: 'star'
+      }
+    },
+    {
+      path: 'message',
+      name: 'userMessage',
+      component: () => import('../view/user/message/index.vue'),
+      meta: {
+        title: '用户消息',
+        icon: 'envelope'
+      }
+    },
+    {
+      path: 'user-detail',
+      name: 'userDetail',
+      component: () => import('../view/superAdmin/user/userDetail.vue'),
+      meta: {
+        title: '用户详情',
+        icon: 'user',
+        hidden: true
       }
     }
   ]

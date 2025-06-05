@@ -10,7 +10,7 @@ export default {
     {
       path: 'list',
       name: 'pointsList',
-      component: () => import('@/view/points/index.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '积分记录',
         icon: 'list'
@@ -19,7 +19,7 @@ export default {
     {
       path: 'rules',
       name: 'pointsRules',
-      component: () => import('@/view/points/rules.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '积分规则',
         icon: 'setting'
@@ -28,7 +28,7 @@ export default {
     {
       path: 'statistics',
       name: 'pointsStatistics',
-      component: () => import('@/view/points/statistics.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '积分统计',
         icon: 'data-line'
@@ -37,7 +37,7 @@ export default {
     {
       path: 'user/:userId',
       name: 'userPoints',
-      component: () => import('@/view/points/user.vue'),
+      component: () => import('@/view/EmptyPage.vue'),
       meta: {
         title: '用户积分',
         icon: 'user',

@@ -1,7 +1,7 @@
 export default {
   path: '/trade',
   name: 'trade',
-  component: () => import('@/view/routerHolder.vue'),
+  component: () => import('../view/routerHolder.vue'),
   meta: {
     title: '交易管理',
     icon: 'shopping-cart'
@@ -10,7 +10,7 @@ export default {
     {
       path: 'order',
       name: 'order',
-      component: () => import('@/view/routerHolder.vue'),
+      component: () => import('../view/routerHolder.vue'),
       meta: {
         title: '订单管理',
         icon: 'tickets'
@@ -19,7 +19,7 @@ export default {
         {
           path: 'list',
           name: 'orderList',
-          component: () => import('@/view/trade/order/orderList.vue'),
+          component: () => import('../view/trade/order/orderList.vue'),
           meta: {
             title: '订单列表',
             icon: 'list'
@@ -28,7 +28,7 @@ export default {
         {
           path: 'detail/:id',
           name: 'orderDetail',
-          component: () => import('@/view/trade/order/orderDetail.vue'),
+          component: () => import('../view/trade/order/orderDetail.vue'),
           meta: {
             title: '订单详情',
             icon: 'data-analysis',
@@ -40,7 +40,7 @@ export default {
     {
       path: 'refund',
       name: 'refund',
-      component: () => import('@/view/routerHolder.vue'),
+      component: () => import('../view/routerHolder.vue'),
       meta: {
         title: '退款管理',
         icon: 'money'
@@ -49,7 +49,7 @@ export default {
         {
           path: 'list',
           name: 'refundList',
-          component: () => import('@/view/trade/refund/refundList.vue'),
+          component: () => import('../view/trade/refund/refundList.vue'),
           meta: {
             title: '退款列表',
             icon: 'list'
@@ -58,7 +58,7 @@ export default {
         {
           path: 'detail/:id',
           name: 'refundDetail',
-          component: () => import('@/view/trade/refund/refundDetail.vue'),
+          component: () => import('../view/trade/refund/refundDetail.vue'),
           meta: {
             title: '退款详情',
             icon: 'data-analysis',
@@ -70,7 +70,7 @@ export default {
     {
       path: 'transaction',
       name: 'transactionList',
-      component: () => import('@/view/trade/transaction/transactionList.vue'),
+      component: () => import('../view/trade/transaction/transactionList.vue'),
       meta: {
         title: '交易记录',
         icon: 'bank-card'
@@ -79,7 +79,7 @@ export default {
     {
       path: 'payment',
       name: 'paymentConfig',
-      component: () => import('@/view/trade/payment/config.vue'),
+      component: () => import('../view/trade/payment/config.vue'),
       meta: {
         title: '支付配置',
         icon: 'money'
@@ -88,7 +88,7 @@ export default {
     {
       path: 'report',
       name: 'financialReport',
-      component: () => import('@/view/trade/report/financialReport.vue'),
+      component: () => import('../view/trade/report/financialReport.vue'),
       meta: {
         title: '财务报表',
         icon: 'pie-chart'
