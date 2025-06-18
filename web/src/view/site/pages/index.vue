@@ -107,49 +107,26 @@
 </template>
 
 <script>
+import { 
+  getPageList, 
+  createPage, 
+  updatePage, 
+  deletePage, 
+  togglePageStatus, 
+  previewPage, 
+  batchUpdatePages 
+} from '@/api/admin/pages'
+
 export default {
   name: 'SitePages',
   data() {
     return {
       loading: false,
-      pageList: [
-        {
-          id: 1,
-          title: '首页',
-          path: '/',
-          type: '首页',
-          updatedAt: '2025-05-30 15:30:22',
-          status: '已发布'
-        },
-        {
-          id: 2,
-          title: '关于我们',
-          path: '/about',
-          type: '内容页',
-          updatedAt: '2025-05-28 10:12:05',
-          status: '已发布'
-        },
-        {
-          id: 3,
-          title: '服务项目',
-          path: '/services',
-          type: '列表页',
-          updatedAt: '2025-05-25 09:45:33',
-          status: '已发布'
-        },
-        {
-          id: 4,
-          title: '联系我们',
-          path: '/contact',
-          type: '表单页',
-          updatedAt: '2025-06-01 16:20:10',
-          status: '草稿'
-        }
-      ],
+      pageList: [],
       selectedPages: [],
       currentPage: 1,
       pageSize: 10,
-      totalItems: 4,
+      totalItems: 0,
       dialogVisible: false,
       isEdit: false,
       pageForm: {
@@ -206,36 +183,30 @@ export default {
     },
 
     // 保存页面
-    savePage() {
-      this.$refs.pageFormRef.validate((valid) => {
+    async savePage() {
+      try {
+        const valid = await this.$refs.pageFormRef.validate()
         if (valid) {
-          this.loading = true;
-          setTimeout(() => {
+          this.loading = true
+          try {
             if (this.isEdit) {
-              // 模拟编辑页面
-              const index = this.pageList.findIndex(item => item.id === this.pageForm.id);
-              if (index !== -1) {
-                this.pageList[index] = {
-                  ...this.pageForm,
-                  updatedAt: new Date().toLocaleString()
-                };
-              }
-              this.$message.success('页面编辑成功');
+              await updatePage(this.pageForm.id, this.pageForm)
+              this.$message.success('页面编辑成功')
             } else {
-              // 模拟添加页面
-              this.pageList.push({
-                id: Date.now(),
-                ...this.pageForm,
-                updatedAt: new Date().toLocaleString()
-              });
-              this.totalItems++;
-              this.$message.success('页面创建成功');
+              await createPage(this.pageForm)
+              this.$message.success('页面创建成功')
             }
-            this.dialogVisible = false;
-            this.loading = false;
-          }, 500);
+            this.dialogVisible = false
+            this.loadPages()
+          } catch (error) {
+            this.$message.error(error.message || '操作失败')
+          } finally {
+            this.loading = false
+          }
         }
-      });
+      } catch (error) {
+        // 表单验证失败
+      }
     },
 
     // 保存并发布
@@ -249,59 +220,96 @@ export default {
     },
 
     // 预览页面
-    previewPage(row) {
-      // 在新窗口预览页面
-      this.$message.info('页面预览功能待实现');
+    async previewPage(row) {
+      try {
+        const response = await previewPage(row.id)
+        // 在新窗口预览页面
+        const previewWindow = window.open('', '_blank')
+        previewWindow.document.write(response.data.html || '<div>预览内容</div>')
+      } catch (error) {
+        this.$message.error('预览失败：' + (error.message || '未知错误'))
+      }
     },
 
     // 切换页面状态
-    toggleStatus(row) {
-      const newStatus = row.status === '已发布' ? '草稿' : '已发布';
-      const actionText = newStatus === '已发布' ? '发布' : '下线';
+    async toggleStatus(row) {
+      const newStatus = row.status === '已发布' ? '草稿' : '已发布'
+      const actionText = newStatus === '已发布' ? '发布' : '下线'
       
-      this.$confirm(`确认要${actionText}该页面吗?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        // 模拟更新状态
-        const index = this.pageList.findIndex(item => item.id === row.id);
-        if (index !== -1) {
-          this.pageList[index].status = newStatus;
-          this.pageList[index].updatedAt = new Date().toLocaleString();
+      try {
+        await this.$confirm(`确认要${actionText}该页面吗?`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        
+        this.loading = true
+        try {
+          await togglePageStatus(row.id, { status: newStatus })
+          this.$message.success(`页面${actionText}成功`)
+          this.loadPages()
+        } catch (error) {
+          this.$message.error(error.message || '操作失败')
+        } finally {
+          this.loading = false
         }
-        this.$message.success(`页面${actionText}成功`);
-      }).catch(() => {
-        // 取消操作
-      });
+      } catch {
+        // 用户取消操作
+      }
     },
 
     // 删除页面
-    deletePage(row) {
-      this.$confirm('确认要删除该页面吗? 删除后不可恢复!', '警告', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'error'
-      }).then(() => {
-        // 模拟删除
-        const index = this.pageList.findIndex(item => item.id === row.id);
-        if (index !== -1) {
-          this.pageList.splice(index, 1);
-          this.totalItems--;
+    async deletePage(row) {
+      try {
+        await this.$confirm('确认要删除该页面吗? 删除后不可恢复!', '警告', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'error'
+        })
+        
+        this.loading = true
+        try {
+          await deletePage(row.id)
+          this.$message.success('页面删除成功')
+          this.loadPages()
+        } catch (error) {
+          this.$message.error(error.message || '删除失败')
+        } finally {
+          this.loading = false
         }
-        this.$message.success('页面删除成功');
-      }).catch(() => {
-        // 取消操作
-      });
+      } catch {
+        // 用户取消操作
+      }
     },
 
     // 批量编辑
-    batchEdit() {
+    async batchEdit() {
       if (this.selectedPages.length === 0) {
-        this.$message.warning('请至少选择一个页面');
-        return;
+        this.$message.warning('请至少选择一个页面')
+        return
       }
-      this.$message.info('批量编辑功能待实现');
+      
+      try {
+        await this.$confirm('确认要批量更新选中的页面吗?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        
+        this.loading = true
+        try {
+          const ids = this.selectedPages.map(page => page.id)
+          await batchUpdatePages({ ids, status: '已发布' })
+          this.$message.success('批量更新成功')
+          this.loadPages()
+        } catch (error) {
+          this.$message.error(error.message || '批量更新失败')
+        } finally {
+          this.loading = false
+        }
+      } catch {
+        // 用户取消操作
+      }
     },
 
     // 根据类型获取标签样式
@@ -332,12 +340,27 @@ export default {
     },
 
     // 加载页面列表
-    loadPages() {
-      this.loading = true;
-      // 模拟异步加载
-      setTimeout(() => {
-        this.loading = false;
-      }, 500);
+    async loadPages() {
+      this.loading = true
+      try {
+        const params = {
+          page: this.currentPage,
+          pageSize: this.pageSize
+        }
+        const response = await getPageList(params)
+        if (response.code === 200) {
+          this.pageList = response.data.list || []
+          this.totalItems = response.data.total || 0
+        } else {
+          this.$message.error(response.message || '获取页面列表失败')
+        }
+      } catch (error) {
+        this.$message.error(error.message || '网络错误')
+        this.pageList = []
+        this.totalItems = 0
+      } finally {
+        this.loading = false
+      }
     },
 
     // 关闭对话框前的回调

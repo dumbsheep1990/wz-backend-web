@@ -5,6 +5,8 @@
       <div class="operation-header">
         <el-button type="primary" @click="addNavigationItem">添加导航项</el-button>
         <el-button type="success" @click="saveOrder">保存排序</el-button>
+        <el-button type="info" @click="exportNavigation">导出导航</el-button>
+        <el-button type="warning" @click="showImportDialog">导入导航</el-button>
       </div>
 
       <el-alert
@@ -24,6 +26,7 @@
           :props="defaultProps"
           draggable
           @node-drag-end="handleDragEnd"
+          v-loading="loading"
         >
           <template #default="{ node, data }">
             <div class="custom-tree-node">
@@ -36,6 +39,12 @@
                   {{ data.visible ? '显示' : '隐藏' }}
                 </el-tag>
                 <el-button link type="primary" @click.stop="editNav(data)">编辑</el-button>
+                <el-switch 
+                  v-model="data.visible" 
+                  @change="toggleVisibility(data)"
+                  size="small"
+                  style="margin: 0 8px;"
+                ></el-switch>
                 <el-button link type="danger" @click.stop="removeNav(node, data)">删除</el-button>
               </span>
             </div>
@@ -63,6 +72,12 @@
               <el-option label="设置" value="Setting"></el-option>
               <el-option label="用户" value="User"></el-option>
               <el-option label="文件" value="Document"></el-option>
+              <el-option label="商品" value="Goods"></el-option>
+              <el-option label="配置" value="SetUp"></el-option>
+              <el-option label="星标" value="Star"></el-option>
+              <el-option label="信息" value="InfoFilled"></el-option>
+              <el-option label="办公" value="Office"></el-option>
+              <el-option label="电话" value="Phone"></el-option>
             </el-select>
           </el-form-item>
           <el-form-item label="父级" prop="parentId">
@@ -79,7 +94,10 @@
               clearable
               placeholder="顶级导航"
               style="width: 100%"
-            ></el-cascader>
+            >            </el-cascader>
+          </el-form-item>
+          <el-form-item label="排序值">
+            <el-input-number v-model="navForm.sortOrder" :min="0" style="width: 100%"></el-input-number>
           </el-form-item>
           <el-form-item label="在新窗口打开">
             <el-switch v-model="navForm.newWindow"></el-switch>
@@ -91,7 +109,38 @@
         <template #footer>
           <span class="dialog-footer">
             <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="saveNavItem">保存</el-button>
+            <el-button type="primary" @click="saveNavItem" :loading="submitting">保存</el-button>
+          </span>
+        </template>
+      </el-dialog>
+
+      <!-- 导入对话框 -->
+      <el-dialog
+        v-model="importDialogVisible"
+        title="导入导航数据"
+        width="50%"
+      >
+        <el-form>
+          <el-form-item label="导航类型">
+            <el-select v-model="importForm.type" placeholder="选择导航类型" style="width: 100%">
+              <el-option label="主导航" value="main"></el-option>
+              <el-option label="底部导航" value="footer"></el-option>
+              <el-option label="侧边导航" value="sidebar"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="导航数据">
+            <el-input 
+              v-model="importForm.data" 
+              type="textarea" 
+              :rows="10"
+              placeholder="请粘贴导航JSON数据"
+            ></el-input>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="importDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="importNavigation" :loading="importing">导入</el-button>
           </span>
         </template>
       </el-dialog>
@@ -100,82 +149,32 @@
 </template>
 
 <script>
+import { 
+  getNavigationTree, 
+  createNavigationItem, 
+  updateNavigationItem, 
+  deleteNavigationItem,
+  updateNavigationOrder,
+  toggleNavigationVisibility,
+  exportNavigationTree,
+  importNavigationTree
+} from '@/api/admin/navigation'
+
 export default {
   name: 'SiteNavigation',
   data() {
     return {
-      navigationData: [
-        {
-          id: 1,
-          name: '首页',
-          url: '/',
-          icon: 'House',
-          visible: true,
-          newWindow: false,
-          children: []
-        },
-        {
-          id: 2,
-          name: '产品服务',
-          url: '/products',
-          icon: 'Goods',
-          visible: true,
-          newWindow: false,
-          children: [
-            {
-              id: 21,
-              name: '解决方案',
-              url: '/solutions',
-              icon: 'SetUp',
-              visible: true,
-              newWindow: false,
-              children: []
-            },
-            {
-              id: 22,
-              name: '成功案例',
-              url: '/cases',
-              icon: 'Star',
-              visible: true,
-              newWindow: false,
-              children: []
-            }
-          ]
-        },
-        {
-          id: 3,
-          name: '关于我们',
-          url: '/about',
-          icon: 'InfoFilled',
-          visible: true,
-          newWindow: false,
-          children: [
-            {
-              id: 31,
-              name: '公司简介',
-              url: '/about/company',
-              icon: 'Office',
-              visible: true,
-              newWindow: false,
-              children: []
-            },
-            {
-              id: 32,
-              name: '联系我们',
-              url: '/contact',
-              icon: 'Phone',
-              visible: true,
-              newWindow: false,
-              children: []
-            }
-          ]
-        }
-      ],
+      loading: false,
+      submitting: false,
+      importing: false,
+      navigationData: [],
+      currentNavType: 'main', // main, footer, sidebar
       defaultProps: {
         children: 'children',
         label: 'name'
       },
       dialogVisible: false,
+      importDialogVisible: false,
       isEdit: false,
       navForm: {
         id: null,
@@ -184,7 +183,13 @@ export default {
         icon: 'Menu',
         parentId: null,
         visible: true,
-        newWindow: false
+        newWindow: false,
+        sortOrder: 0,
+        type: 'main'
+      },
+      importForm: {
+        type: 'main',
+        data: ''
       },
       navRules: {
         name: [
@@ -194,20 +199,55 @@ export default {
         url: [
           { required: true, message: '请输入链接地址', trigger: 'blur' }
         ]
-      }
+      },
+      orderChanged: false
     }
   },
   computed: {
     navigationTree() {
       // 转换成cascader需要的格式
+      const convertToTree = (nav) => {
+        const result = {
+          id: nav.id,
+          name: nav.name
+        };
+        
+        if (nav.children && nav.children.length) {
+          result.children = nav.children.map(item => convertToTree(item));
+        }
+        
+        return result;
+      };
+
       return [{
         id: 0,
         name: '顶级导航',
-        children: this.navigationData.map(item => this.convertToTree(item))
+        children: this.navigationData.map(item => convertToTree(item))
       }];
     }
   },
+  mounted() {
+    this.loadNavigationData();
+  },
   methods: {
+    // 加载导航数据
+    async loadNavigationData() {
+      this.loading = true;
+      try {
+        const response = await getNavigationTree({ type: this.currentNavType });
+        if (response.code === 200) {
+          this.navigationData = response.data || [];
+        } else {
+          this.$message.error(response.message || '获取导航数据失败');
+        }
+      } catch (error) {
+        console.error('获取导航数据失败:', error);
+        this.$message.error('获取导航数据失败');
+      } finally {
+        this.loading = false;
+      }
+    },
+
     // 添加导航项
     addNavigationItem() {
       this.isEdit = false;
@@ -218,7 +258,9 @@ export default {
         icon: 'Menu',
         parentId: null,
         visible: true,
-        newWindow: false
+        newWindow: false,
+        sortOrder: 0,
+        type: this.currentNavType
       };
       this.dialogVisible = true;
     },
@@ -231,127 +273,54 @@ export default {
         name: data.name,
         url: data.url,
         icon: data.icon,
-        parentId: this.findParentId(data.id),
+        parentId: data.parentId,
         visible: data.visible,
-        newWindow: data.newWindow
+        newWindow: data.newWindow,
+        sortOrder: data.sortOrder,
+        type: data.type
       };
       this.dialogVisible = true;
     },
 
-    // 查找父级ID
-    findParentId(id, navData = this.navigationData) {
-      for (const item of navData) {
-        if (item.children && item.children.length) {
-          for (const child of item.children) {
-            if (child.id === id) {
-              return item.id;
-            }
-            if (child.children && child.children.length) {
-              const foundId = this.findParentId(id, [child]);
-              if (foundId) return foundId;
-            }
-          }
-        }
-      }
-      return null;
-    },
 
-    // 递归生成cascader数据结构
-    convertToTree(nav) {
-      const result = {
-        id: nav.id,
-        name: nav.name
-      };
-      
-      if (nav.children && nav.children.length) {
-        result.children = nav.children.map(item => this.convertToTree(item));
-      }
-      
-      return result;
-    },
 
     // 保存导航项
-    saveNavItem() {
-      this.$refs.navFormRef.validate((valid) => {
-        if (valid) {
-          if (this.isEdit) {
-            // 修改现有导航项
-            this.updateNavItem(this.navForm);
+    async saveNavItem() {
+      const isValid = await this.$refs.navFormRef.validate();
+      if (!isValid) return;
+
+      this.submitting = true;
+      try {
+        if (this.isEdit) {
+          // 更新现有导航项
+          const response = await updateNavigationItem(this.navForm.id, this.navForm);
+          if (response.code === 200) {
+            this.$message.success('更新导航项成功');
+            this.loadNavigationData();
+            this.dialogVisible = false;
           } else {
-            // 添加新导航项
-            this.createNavItem(this.navForm);
+            this.$message.error(response.message || '更新导航项失败');
           }
-          this.dialogVisible = false;
-          this.$message.success('保存成功');
+        } else {
+          // 创建新导航项
+          const response = await createNavigationItem(this.navForm);
+          if (response.code === 200) {
+            this.$message.success('创建导航项成功');
+            this.loadNavigationData();
+            this.dialogVisible = false;
+          } else {
+            this.$message.error(response.message || '创建导航项失败');
+          }
         }
-      });
-    },
-
-    // 创建导航项
-    createNavItem(formData) {
-      const newItem = {
-        id: Date.now(), // 使用时间戳作为临时ID
-        name: formData.name,
-        url: formData.url,
-        icon: formData.icon,
-        visible: formData.visible,
-        newWindow: formData.newWindow,
-        children: []
-      };
-      
-      if (formData.parentId) {
-        // 有父级，添加到父级的children中
-        this.addToParent(this.navigationData, formData.parentId, newItem);
-      } else {
-        // 顶级导航
-        this.navigationData.push(newItem);
+      } catch (error) {
+        console.error('保存导航项失败:', error);
+        this.$message.error('保存导航项失败');
+      } finally {
+        this.submitting = false;
       }
     },
 
-    // 添加到父级节点
-    addToParent(navData, parentId, newItem) {
-      for (const item of navData) {
-        if (item.id === parentId) {
-          item.children.push(newItem);
-          return true;
-        }
-        if (item.children && item.children.length) {
-          const added = this.addToParent(item.children, parentId, newItem);
-          if (added) return true;
-        }
-      }
-      return false;
-    },
 
-    // 更新导航项
-    updateNavItem(formData) {
-      const updateItem = node => {
-        if (node.id === formData.id) {
-          node.name = formData.name;
-          node.url = formData.url;
-          node.icon = formData.icon;
-          node.visible = formData.visible;
-          node.newWindow = formData.newWindow;
-          return true;
-        }
-        return false;
-      };
-
-      const traverse = (navData) => {
-        for (const item of navData) {
-          if (updateItem(item)) {
-            return true;
-          }
-          if (item.children && item.children.length) {
-            const updated = traverse(item.children);
-            if (updated) return true;
-          }
-        }
-        return false;
-      };
-
-      traverse(this.navigationData);
-    },
 
     // 删除导航项
     removeNav(node, data) {
@@ -359,27 +328,145 @@ export default {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(() => {
-        const parent = node.parent;
-        const children = parent.data.children || parent.data;
-        const index = children.findIndex(d => d.id === data.id);
-        if (index !== -1) {
-          children.splice(index, 1);
+      }).then(async () => {
+        try {
+          const response = await deleteNavigationItem(data.id);
+          if (response.code === 200) {
+            this.$message.success('导航项已删除');
+            this.loadNavigationData();
+          } else {
+            this.$message.error(response.message || '删除导航项失败');
+          }
+        } catch (error) {
+          console.error('删除导航项失败:', error);
+          this.$message.error('删除导航项失败');
         }
-        this.$message.success('导航项已删除');
       }).catch(() => {
         // 取消删除
       });
     },
 
+    // 切换可见性
+    async toggleVisibility(data) {
+      try {
+        const response = await toggleNavigationVisibility(data.id, { visible: data.visible });
+        if (response.code === 200) {
+          this.$message.success('导航项状态已更新');
+        } else {
+          this.$message.error(response.message || '更新导航项状态失败');
+          // 回滚状态
+          data.visible = !data.visible;
+        }
+      } catch (error) {
+        console.error('更新导航项状态失败:', error);
+        this.$message.error('更新导航项状态失败');
+        // 回滚状态
+        data.visible = !data.visible;
+      }
+    },
+
     // 保存排序
-    saveOrder() {
-      this.$message.success('导航排序已保存');
+    async saveOrder() {
+      if (!this.orderChanged) {
+        this.$message.info('排序未发生变化');
+        return;
+      }
+
+      try {
+        // 构建排序数据
+        const orderData = this.buildOrderData(this.navigationData);
+        const response = await updateNavigationOrder({
+          type: this.currentNavType,
+          orderData
+        });
+        
+        if (response.code === 200) {
+          this.$message.success('导航排序已保存');
+          this.orderChanged = false;
+        } else {
+          this.$message.error(response.message || '保存导航排序失败');
+        }
+      } catch (error) {
+        console.error('保存导航排序失败:', error);
+        this.$message.error('保存导航排序失败');
+      }
+    },
+
+    // 构建排序数据
+    buildOrderData(navItems, parentId = null) {
+      let orderData = [];
+      navItems.forEach((item, index) => {
+        orderData.push({
+          id: item.id,
+          parentId: parentId,
+          order: index
+        });
+        
+        if (item.children && item.children.length > 0) {
+          orderData = orderData.concat(this.buildOrderData(item.children, item.id));
+        }
+      });
+      return orderData;
     },
 
     // 拖拽结束处理
     handleDragEnd(draggingNode, dropNode, dropType, ev) {
       this.$message.info('导航顺序已更改，请记得保存');
+      this.orderChanged = true;
+    },
+
+    // 导出导航
+    async exportNavigation() {
+      try {
+        const response = await exportNavigationTree({ type: this.currentNavType });
+        // 创建下载链接
+        const blob = new Blob([response], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `navigation_${this.currentNavType}_${new Date().getTime()}.json`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+        
+        this.$message.success('导航数据导出成功');
+      } catch (error) {
+        console.error('导出导航数据失败:', error);
+        this.$message.error('导出导航数据失败');
+      }
+    },
+
+    // 显示导入对话框
+    showImportDialog() {
+      this.importForm = {
+        type: this.currentNavType,
+        data: ''
+      };
+      this.importDialogVisible = true;
+    },
+
+    // 导入导航
+    async importNavigation() {
+      if (!this.importForm.data.trim()) {
+        this.$message.error('请输入导航数据');
+        return;
+      }
+
+      this.importing = true;
+      try {
+        const response = await importNavigationTree(this.importForm);
+        if (response.code === 200) {
+          this.$message.success('导入导航数据成功');
+          this.importDialogVisible = false;
+          this.loadNavigationData();
+        } else {
+          this.$message.error(response.message || '导入导航数据失败');
+        }
+      } catch (error) {
+        console.error('导入导航数据失败:', error);
+        this.$message.error('导入导航数据失败');
+      } finally {
+        this.importing = false;
+      }
     }
   }
 }
@@ -404,5 +491,15 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding-right: 8px;
+}
+.custom-tree-node span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.custom-tree-node span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>

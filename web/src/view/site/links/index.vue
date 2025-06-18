@@ -110,83 +110,27 @@
 </template>
 
 <script>
+import { 
+  getLinkList, 
+  createLink, 
+  updateLink, 
+  deleteLink, 
+  verifyLink, 
+  batchVerifyLinks, 
+  getLinkCategories 
+} from '@/api/admin/links'
+
 export default {
   name: 'SiteLinks',
   data() {
     return {
       loading: false,
-      links: [
-        {
-          id: 1,
-          name: '官方博客',
-          url: 'https://blog.example.com',
-          category: 'resources',
-          icon: 'fa-blog',
-          description: '公司官方博客，分享最新动态和技术文章',
-          sort: 10,
-          newWindow: true,
-          isActive: true,
-          status: 'active',
-          updatedAt: '2025-05-30 15:30:22'
-        },
-        {
-          id: 2,
-          name: '合作伙伴A公司',
-          url: 'https://partner-a.com',
-          category: 'partner',
-          icon: 'fa-handshake',
-          description: '战略合作伙伴A公司官网',
-          sort: 20,
-          newWindow: true,
-          isActive: true,
-          status: 'active',
-          updatedAt: '2025-05-28 10:12:05'
-        },
-        {
-          id: 3,
-          name: 'GitHub',
-          url: 'https://github.com/example',
-          category: 'social',
-          icon: 'fa-github',
-          description: '公司开源项目GitHub页面',
-          sort: 30,
-          newWindow: true,
-          isActive: true,
-          status: 'active',
-          updatedAt: '2025-06-01 16:20:10'
-        },
-        {
-          id: 4,
-          name: '友情链接B站点',
-          url: 'https://site-b.org',
-          category: 'friendship',
-          icon: 'fa-link',
-          description: '友情链接B站点',
-          sort: 40,
-          newWindow: true,
-          isActive: false,
-          status: 'invalid',
-          updatedAt: '2025-05-25 09:45:33'
-        },
-        {
-          id: 5,
-          name: 'LinkedIn',
-          url: 'https://linkedin.com/company/example',
-          category: 'social',
-          icon: 'fa-linkedin',
-          description: '公司LinkedIn主页',
-          sort: 50,
-          newWindow: true,
-          isActive: true,
-          status: 'active',
-          updatedAt: '2025-06-02 11:22:18'
-        }
-      ],
+      links: [],
       categoryFilter: '',
       selectedLinks: [],
       currentPage: 1,
       pageSize: 10,
-      totalItems: 5,
+      totalItems: 0,
       dialogVisible: false,
       isEdit: false,
       linkForm: {
@@ -251,114 +195,104 @@ export default {
     },
 
     // 检测链接是否有效
-    verifyLink(link) {
-      this.loading = true;
-      // 模拟异步检测
-      setTimeout(() => {
-        this.loading = false;
-
-        // 随机模拟检测结果
-        const isValid = Math.random() > 0.2;
-        const index = this.links.findIndex(item => item.id === link.id);
-        
-        if (index !== -1) {
-          this.links[index].status = isValid ? 'active' : 'invalid';
-          this.links[index].updatedAt = new Date().toLocaleString();
+    async verifyLink(link) {
+      this.loading = true
+      try {
+        const response = await verifyLink(link.id)
+        if (response.code === 200) {
+          const result = response.data
+          this.$message({
+            type: result.is_valid ? 'success' : 'error',
+            message: result.is_valid ? '链接检测正常' : `链接检测失败: ${result.error_message || '无法访问'}`
+          })
+          this.loadLinks() // 重新加载列表以更新状态
+        } else {
+          this.$message.error(response.message || '检测失败')
         }
-        
-        this.$message({
-          type: isValid ? 'success' : 'error',
-          message: isValid ? '链接检测正常' : '链接检测失败，请检查URL是否有效'
-        });
-      }, 1000);
+      } catch (error) {
+        this.$message.error(error.message || '检测失败')
+      } finally {
+        this.loading = false
+      }
     },
 
     // 批量检测链接
-    batchVerify() {
+    async batchVerify() {
       if (this.selectedLinks.length === 0) {
-        this.$message.warning('请先选择要检测的链接');
-        return;
+        this.$message.warning('请先选择要检测的链接')
+        return
       }
 
-      this.loading = true;
-      // 模拟异步批量检测
-      setTimeout(() => {
-        this.loading = false;
-
-        let successCount = 0;
-        let failCount = 0;
-
-        this.selectedLinks.forEach(link => {
-          const isValid = Math.random() > 0.2;
-          const index = this.links.findIndex(item => item.id === link.id);
-          
-          if (index !== -1) {
-            this.links[index].status = isValid ? 'active' : 'invalid';
-            this.links[index].updatedAt = new Date().toLocaleString();
-          }
-
-          if (isValid) {
-            successCount++;
-          } else {
-            failCount++;
-          }
-        });
-
-        this.$message({
-          type: 'info',
-          message: `链接检测完成：${successCount} 个有效，${failCount} 个失效`
-        });
-      }, 1500);
+      this.loading = true
+      try {
+        const ids = this.selectedLinks.map(link => link.id)
+        const response = await batchVerifyLinks({ ids })
+        if (response.code === 200) {
+          const result = response.data
+          this.$message({
+            type: 'info',
+            message: `链接检测完成：${result.success_count} 个有效，${result.fail_count} 个失效`
+          })
+          this.loadLinks() // 重新加载列表以更新状态
+        } else {
+          this.$message.error(response.message || '批量检测失败')
+        }
+      } catch (error) {
+        this.$message.error(error.message || '批量检测失败')
+      } finally {
+        this.loading = false
+      }
     },
 
     // 删除链接
-    deleteLink(link) {
-      this.$confirm('确定要删除此链接吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        // 模拟删除
-        const index = this.links.findIndex(item => item.id === link.id);
-        if (index !== -1) {
-          this.links.splice(index, 1);
-          this.totalItems--;
+    async deleteLink(link) {
+      try {
+        await this.$confirm('确定要删除此链接吗？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        
+        this.loading = true
+        try {
+          await deleteLink(link.id)
+          this.$message.success('链接删除成功')
+          this.loadLinks()
+        } catch (error) {
+          this.$message.error(error.message || '删除失败')
+        } finally {
+          this.loading = false
         }
-        this.$message.success('链接删除成功');
-      }).catch(() => {
-        // 取消操作
-      });
+      } catch {
+        // 用户取消操作
+      }
     },
 
     // 保存链接
-    saveLink() {
-      this.$refs.linkFormRef.validate((valid) => {
+    async saveLink() {
+      try {
+        const valid = await this.$refs.linkFormRef.validate()
         if (valid) {
-          if (this.isEdit) {
-            // 更新现有链接
-            const index = this.links.findIndex(item => item.id === this.linkForm.id);
-            if (index !== -1) {
-              this.links[index] = {
-                ...this.linkForm,
-                status: this.linkForm.isActive ? 'active' : 'invalid',
-                updatedAt: new Date().toLocaleString()
-              };
+          this.loading = true
+          try {
+            if (this.isEdit) {
+              await updateLink(this.linkForm.id, this.linkForm)
+              this.$message.success('链接更新成功')
+            } else {
+              await createLink(this.linkForm)
+              this.$message.success('链接添加成功')
             }
-            this.$message.success('链接更新成功');
-          } else {
-            // 添加新链接
-            this.links.push({
-              id: Date.now(),
-              ...this.linkForm,
-              status: this.linkForm.isActive ? 'active' : 'invalid',
-              updatedAt: new Date().toLocaleString()
-            });
-            this.totalItems++;
-            this.$message.success('链接添加成功');
+            this.dialogVisible = false
+            this.loadLinks()
+          } catch (error) {
+            this.$message.error(error.message || '操作失败')
+          } finally {
+            this.loading = false
           }
-          this.dialogVisible = false;
         }
-      });
+      } catch (error) {
+        // 表单验证失败
+      }
     },
 
     // 获取分类样式
@@ -399,12 +333,28 @@ export default {
     },
 
     // 加载链接列表
-    loadLinks() {
-      this.loading = true;
-      // 模拟异步加载
-      setTimeout(() => {
-        this.loading = false;
-      }, 300);
+    async loadLinks() {
+      this.loading = true
+      try {
+        const params = {
+          page: this.currentPage,
+          pageSize: this.pageSize,
+          category: this.categoryFilter
+        }
+        const response = await getLinkList(params)
+        if (response.code === 200) {
+          this.links = response.data.list || []
+          this.totalItems = response.data.total || 0
+        } else {
+          this.$message.error(response.message || '获取链接列表失败')
+        }
+      } catch (error) {
+        this.$message.error(error.message || '网络错误')
+        this.links = []
+        this.totalItems = 0
+      } finally {
+        this.loading = false
+      }
     }
   },
   mounted() {
